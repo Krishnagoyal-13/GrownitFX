@@ -22,7 +22,7 @@ abstract class Controller
     protected function redirect(string $path): void
     {
         $target = $path;
-        if (str_starts_with($path, '/portal/')) {
+        if (str_starts_with($path, '/portal/') && !str_contains($path, '.php')) {
             $route = '/' . ltrim(substr($path, strlen('/portal')), '/');
             $target = '/portal/public/index.php?route=' . rawurlencode($route);
         }
