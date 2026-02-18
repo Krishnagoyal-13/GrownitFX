@@ -1,0 +1,72 @@
+html {
+  scroll-behavior: smooth;
+}
+.mpic {
+    width: 100%;
+}
+.wtext {
+    color: #fff;
+}
+.split {
+    clear: both;
+}
+.stext {
+    font-size: 14px;
+}
+.fpic {
+    width: 100% !important;
+    margin-right: -100px;
+    
+}
+.radpic {
+    border-radius: 200px;
+}
+.sicon {
+    font-size: 26px !important;
+}
+.sstext {
+    font-size: 12px;
+    line-height: 18px;
+}
+.yel {
+    color: #d2f157;
+}
+.medpic {
+    width: 55%;
+}
+.mtopmin {
+    margin-top: -75px;
+}
+.smallgraph {
+    width: 55%;
+}
+.mb {
+    margin-bottom: 75px;
+}
+.faqpic {
+    max-width: 333px;
+    width: 95%
+} 
+.top {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 60px;
+    z-index: 999;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.8);
+    text-align: center;
+    line-height: 40px;
+    display: none;
+}
+.top a {
+    font-size: 30px;
+    color: rgba(255,255,255,0.7);
+    display: block;
+    padding-bottom: 5px;
+    
+}
+.top a:hover {
+    font-size: 50px;
+    opacity: 0.5;
+}
