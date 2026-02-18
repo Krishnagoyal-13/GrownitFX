@@ -15,7 +15,7 @@ final class DashboardController extends Controller
     {
         $mt5Login = (int)Session::get('mt5_login', 0);
         if ($mt5Login <= 0) {
-            $this->redirect('/portal/login');
+            $this->redirect('/portal/login/index.php');
         }
 
         $client = new MT5WebApiClient();
