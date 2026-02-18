@@ -6,6 +6,7 @@ namespace App\Core;
 final class Router
 {
     private array $routes = ['GET' => [], 'POST' => []];
+    private string $lastResolvedPath = '/';
 
     public function __construct(private readonly string $basePath = '')
     {
@@ -21,9 +22,27 @@ final class Router
         $this->routes['POST'][$path] = $handler;
     }
 
+    public function resolvePath(string $uriPath): string
+    {
+        $path = $uriPath;
+
+        if ($this->basePath !== '' && str_starts_with($path, $this->basePath)) {
+            $path = substr($path, strlen($this->basePath));
+        }
+
+        $path = '/' . trim($path, '/');
+        return $path === '/' ? '/' : rtrim($path, '/');
+    }
+
+    public function getLastResolvedPath(): string
+    {
+        return $this->lastResolvedPath;
+    }
+
     public function dispatch(string $method, string $uriPath): void
     {
-        $path = $this->normalizePath($uriPath);
+        $path = $this->resolvePath($uriPath);
+        $this->lastResolvedPath = $path;
         $handler = $this->routes[$method][$path] ?? null;
 
         if ($handler === null) {
@@ -50,16 +69,5 @@ final class Router
         }
 
         $controller->{$action}();
-    }
-
-    private function normalizePath(string $uriPath): string
-    {
-        $path = $uriPath;
-        if ($this->basePath !== '' && str_starts_with($path, $this->basePath)) {
-            $path = substr($path, strlen($this->basePath));
-        }
-
-        $path = '/' . trim($path, '/');
-        return $path === '/' ? '/' : rtrim($path, '/');
     }
 }
