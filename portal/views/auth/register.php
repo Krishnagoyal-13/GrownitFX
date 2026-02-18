@@ -32,6 +32,7 @@
   const btn = document.getElementById('register-btn');
   const err = document.getElementById('register-error');
   const basePath = <?= json_encode((string)$basePath, JSON_UNESCAPED_SLASHES) ?>;
+  const apiBase = `${basePath}/public/index.php`;
 
   const setError = (msg) => {
     err.textContent = msg;
@@ -47,24 +48,28 @@
     const payload = new FormData(form);
 
     try {
-      const startResp = await fetch(`${basePath}/api/user/start`, {
+      const startResp = await fetch(`${apiBase}?route=/api/user/start`, {
         method: 'POST',
         body: payload,
         headers: { 'Accept': 'application/json' },
       });
-      const startJson = await startResp.json();
+      const startText = await startResp.text();
+      let startJson;
+      try { startJson = JSON.parse(startText); } catch { throw new Error('Server returned non-JSON response for /api/user/start.'); }
       if (!startResp.ok || !startJson.ok) {
         throw new Error(startJson.error || 'MT5 start handshake failed.');
       }
 
       btn.textContent = 'Authorizing...';
 
-      const accessResp = await fetch(`${basePath}/api/user/access`, {
+      const accessResp = await fetch(`${apiBase}?route=/api/user/access`, {
         method: 'POST',
         body: payload,
         headers: { 'Accept': 'application/json' },
       });
-      const accessJson = await accessResp.json();
+      const accessText = await accessResp.text();
+      let accessJson;
+      try { accessJson = JSON.parse(accessText); } catch { throw new Error('Server returned non-JSON response for /api/user/access.'); }
       if (!accessResp.ok || !accessJson.ok || accessJson.connected !== true) {
         throw new Error(accessJson.error || 'MT5 access handshake failed.');
       }

@@ -293,4 +293,18 @@ final class AuthController extends Controller
             @unlink($cookieFile);
         }
     }
+
+    private function json(array $payload, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function cleanupHandshake(string $cookieFile): void
+    {
+        if ($cookieFile !== '' && is_file($cookieFile)) {
+            @unlink($cookieFile);
+        }
+    }
 }

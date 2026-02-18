@@ -14,15 +14,18 @@
 <script>
 (() => {
   const basePath = <?= json_encode((string)$basePath, JSON_UNESCAPED_SLASHES) ?>;
+  const apiBase = `${basePath}/public/index.php`;
   const loading = document.getElementById('creds-loading');
   const err = document.getElementById('creds-error');
   const data = document.getElementById('creds-data');
   const loginId = document.getElementById('login-id');
   const loginPassword = document.getElementById('login-password');
 
-  fetch(`${basePath}/api/user/get`, { headers: { 'Accept': 'application/json' } })
+  fetch(`${apiBase}?route=/api/user/get`, { headers: { 'Accept': 'application/json' } })
     .then(async (res) => {
-      const json = await res.json();
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { throw new Error('Server returned non-JSON response for /api/user/get.'); }
       if (!res.ok || !json.ok) {
         throw new Error(json.error || 'Unable to fetch credentials.');
       }
