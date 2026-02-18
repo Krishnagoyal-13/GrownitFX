@@ -14,23 +14,47 @@
 <script>
 (() => {
   const basePath = <?= json_encode((string)$basePath, JSON_UNESCAPED_SLASHES) ?>;
-  const apiBase = `${basePath}/public/index.php`;
   const loading = document.getElementById('creds-loading');
   const err = document.getElementById('creds-error');
   const data = document.getElementById('creds-data');
   const loginId = document.getElementById('login-id');
   const loginPassword = document.getElementById('login-password');
+  const endpointCandidates = [
+    `${basePath}/api/user/get`,
+    `${basePath}/public/index.php?route=${encodeURIComponent('/api/user/get')}`,
+  ];
 
-  fetch(`${apiBase}?route=/api/user/get`, { headers: { 'Accept': 'application/json' } })
-    .then(async (res) => {
+  const fetchCredentials = async () => {
+    for (const endpoint of endpointCandidates) {
+      const res = await fetch(endpoint, {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json' },
+      });
+
       const text = await res.text();
       let json;
-      try { json = JSON.parse(text); } catch { throw new Error('Server returned non-JSON response for /api/user/get.'); }
-      if (!res.ok || !json.ok) {
-        throw new Error(json.error || 'Unable to fetch credentials.');
+      try {
+        json = JSON.parse(text);
+      } catch {
+        if (!res.ok) {
+          continue;
+        }
+        throw new Error('Server returned non-JSON response for /api/user/get.');
       }
-      loginId.textContent = json.loginId || '';
-      loginPassword.textContent = json.password || '';
+
+      return { res, json };
+    }
+
+    throw new Error('Unable to fetch credentials endpoint.');
+  };
+
+  fetchCredentials()
+    .then(async (res) => {
+      if (!res.res.ok) {
+        throw new Error(res.json.error || 'Unable to fetch credentials.');
+      }
+      loginId.textContent = res.json.loginId || '';
+      loginPassword.textContent = res.json.password || '';
       loading.style.display = 'none';
       data.style.display = 'block';
     })

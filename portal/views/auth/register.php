@@ -22,6 +22,27 @@
   <label for="leverage">Leverage (1-2000)</label>
   <input id="leverage" name="leverage" type="number" min="1" max="2000" required value="<?= (int)$defaultLeverage ?>">
 
+  <label for="company">Company (optional)</label>
+  <input id="company" name="company" type="text" maxlength="128">
+
+  <label for="country">Country (optional)</label>
+  <input id="country" name="country" type="text" maxlength="128">
+
+  <label for="city">City (optional)</label>
+  <input id="city" name="city" type="text" maxlength="128">
+
+  <label for="state">State (optional)</label>
+  <input id="state" name="state" type="text" maxlength="128">
+
+  <label for="zipcode">Zip Code (optional)</label>
+  <input id="zipcode" name="zipcode" type="text" maxlength="64">
+
+  <label for="address">Address (optional)</label>
+  <input id="address" name="address" type="text" maxlength="255">
+
+  <label for="phone">Phone (optional)</label>
+  <input id="phone" name="phone" type="text" maxlength="64">
+
   <button id="register-btn" type="submit">Register</button>
 </form>
 <p><a href="<?= htmlspecialchars((string)$basePath, ENT_QUOTES, 'UTF-8') ?>/login">Have an account? Login</a></p>
@@ -32,7 +53,37 @@
   const btn = document.getElementById('register-btn');
   const err = document.getElementById('register-error');
   const basePath = <?= json_encode((string)$basePath, JSON_UNESCAPED_SLASHES) ?>;
-  const apiBase = `${basePath}/public/index.php`;
+  const csrf = form.querySelector('input[name="_csrf"]')?.value || '';
+  const endpointCandidates = (path) => [
+    `${basePath}${path}`,
+    `${basePath}/public/index.php?route=${encodeURIComponent(path)}`,
+  ];
+
+  const fetchJson = async (path, options = {}) => {
+    let lastError = null;
+
+    for (const endpoint of endpointCandidates(path)) {
+      try {
+        const response = await fetch(endpoint, options);
+        const text = await response.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          if (!response.ok) {
+            continue;
+          }
+          throw new Error(`Server returned non-JSON response for ${path}.`);
+        }
+
+        return { response, json };
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(`Request failed for ${path}.`);
+  };
 
   const setError = (msg) => {
     err.textContent = msg;
@@ -48,29 +99,31 @@
     const payload = new FormData(form);
 
     try {
-      const startResp = await fetch(`${apiBase}?route=/api/user/start`, {
+      const { response: startResp, json: startJson } = await fetchJson('/api/user/start', {
         method: 'POST',
         body: payload,
-        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'X-CSRF-Token': csrf,
+        },
       });
-      const startText = await startResp.text();
-      let startJson;
-      try { startJson = JSON.parse(startText); } catch { throw new Error('Server returned non-JSON response for /api/user/start.'); }
       if (!startResp.ok || !startJson.ok) {
         throw new Error(startJson.error || 'MT5 start handshake failed.');
       }
 
       btn.textContent = 'Authorizing...';
 
-      const accessResp = await fetch(`${apiBase}?route=/api/user/access`, {
+      const { response: accessResp, json: accessJson } = await fetchJson('/api/user/access', {
         method: 'POST',
         body: payload,
-        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json',
+          'X-CSRF-Token': csrf,
+        },
       });
-      const accessText = await accessResp.text();
-      let accessJson;
-      try { accessJson = JSON.parse(accessText); } catch { throw new Error('Server returned non-JSON response for /api/user/access.'); }
-      if (!accessResp.ok || !accessJson.ok || accessJson.connected !== true) {
+      if (!accessResp.ok || accessJson.connected !== true) {
         throw new Error(accessJson.error || 'MT5 access handshake failed.');
       }
 
