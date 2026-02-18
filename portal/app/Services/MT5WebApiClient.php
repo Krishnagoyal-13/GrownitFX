@@ -520,6 +520,39 @@ final class MT5WebApiClient
         ], $body);
     }
 
+    /**
+     * Register flow for website:
+     * - takes only name/email/password from form
+     * - keeps remaining add-user parameters static
+     * - runs full auth + add-user + quit in one session
+     */
+    public function registerWebsiteUser(string $name, string $email, string $password): array
+    {
+        $group = 'demo\\forex-hedge-usd-01';
+        $leverage = 100;
+        $investorPassword = $this->generateMt5Password(12);
+
+        $response = $this->addUser(
+            $group,
+            $name,
+            $leverage,
+            $password,
+            $investorPassword,
+            $email,
+        );
+
+        if (!is_array($response) || !$this->retOk($response)) {
+            throw new RuntimeException('MT5 register failed');
+        }
+
+        return [
+            'group' => $group,
+            'leverage' => $leverage,
+            'investor_password' => $investorPassword,
+            'response' => $response,
+        ];
+    }
+
     public function checkPassword(int $login, string $password): array|false
     {
         if ($login <= 0 || $password === '') {
