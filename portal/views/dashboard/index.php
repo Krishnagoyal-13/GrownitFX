@@ -1,7 +1,7 @@
 <?php declare(strict_types=1); ?>
 <div class="nav">
   <h1>Dashboard</h1>
-  <form method="post" action="/portal/public/index.php?route=/logout">
+  <form method="post" action="/portal/logout/index.php">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars((string)$csrf, ENT_QUOTES, 'UTF-8') ?>">
     <button type="submit">Logout</button>
   </form>
