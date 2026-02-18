@@ -22,9 +22,14 @@ abstract class Controller
     protected function redirect(string $path): void
     {
         $target = $path;
-        if (str_starts_with($path, '/portal/')) {
-            $route = '/' . ltrim(substr($path, strlen('/portal')), '/');
-            $target = '/portal/public/index.php?route=' . rawurlencode($route);
+        $appBasePath = (string)($_ENV['APP_BASE_PATH'] ?? '/portal');
+
+        if (str_starts_with($path, '/portal')) {
+            $suffix = substr($path, strlen('/portal')) ?: '';
+            $target = rtrim($appBasePath, '/') . $suffix;
+            if ($target === '') {
+                $target = '/';
+            }
         }
 
         header('Location: ' . $target);

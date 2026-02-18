@@ -5,6 +5,25 @@ namespace App\Core;
 
 final class Session
 {
+    private static function detectCookiePath(): string
+    {
+        $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+        $phpSelf = (string)($_SERVER['PHP_SELF'] ?? '');
+        $entryScript = $scriptName !== '' ? $scriptName : $phpSelf;
+
+        if ($entryScript === '') {
+            return '/portal';
+        }
+
+        $entryDir = rtrim(str_replace('\\', '/', dirname($entryScript)), '/');
+        if (str_ends_with($entryDir, '/public')) {
+            $entryDir = substr($entryDir, 0, -strlen('/public'));
+        }
+
+        $entryDir = '/' . ltrim($entryDir, '/');
+        return $entryDir === '/' ? '/' : rtrim($entryDir, '/');
+    }
+
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -14,7 +33,7 @@ final class Session
         $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
         session_set_cookie_params([
             'lifetime' => 0,
-            'path' => '/portal',
+            'path' => self::detectCookiePath(),
             'domain' => '',
             'secure' => $https,
             'httponly' => true,
