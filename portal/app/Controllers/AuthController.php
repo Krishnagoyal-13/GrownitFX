@@ -59,7 +59,7 @@ final class AuthController extends Controller
 
     public function apiUserStart(): void
     {
-        if (!Csrf::verify($_POST['_csrf'] ?? null)) {
+        if (!Csrf::verify($this->csrfFromRequest())) {
             $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
             return;
         }
@@ -82,7 +82,7 @@ final class AuthController extends Controller
 
     public function apiUserAccess(): void
     {
-        if (!Csrf::verify($_POST['_csrf'] ?? null)) {
+        if (!Csrf::verify($this->csrfFromRequest())) {
             $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
             return;
         }
@@ -157,7 +157,6 @@ final class AuthController extends Controller
             $this->cleanupHandshake((string)$state['cookie_file']);
 
             $this->sendJson([
-                'ok' => true,
                 'connected' => true,
                 'loginId' => (string)$mt5Login,
             ]);
@@ -166,12 +165,6 @@ final class AuthController extends Controller
             Session::remove('mt5_handshake');
             $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
         }
-
-        $this->json([
-            'ok' => true,
-            'loginId' => (string)$creds['loginId'],
-            'password' => (string)$creds['password'],
-        ]);
     }
 
     public function register(): void
@@ -189,16 +182,9 @@ final class AuthController extends Controller
         }
 
         $this->sendJson([
-            'ok' => true,
             'loginId' => (string)$creds['loginId'],
             'password' => (string)$creds['password'],
         ]);
-    }
-
-    public function register(): void
-    {
-        Session::set('flash_error', 'Use the new register flow button to create account.');
-        $this->redirect('/portal/register');
     }
 
     public function login(): void
@@ -278,48 +264,6 @@ final class AuthController extends Controller
         $this->redirect('/portal/login/index.php');
     }
 
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
     private function sendJson(array $payload, int $status = 200): void
     {
         http_response_code($status);
@@ -332,5 +276,16 @@ final class AuthController extends Controller
         if ($cookieFile !== '' && is_file($cookieFile)) {
             @unlink($cookieFile);
         }
+    }
+
+    private function csrfFromRequest(): ?string
+    {
+        $token = $_POST['_csrf'] ?? null;
+        if (is_string($token) && $token !== '') {
+            return $token;
+        }
+
+        $header = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+        return is_string($header) ? $header : null;
     }
 }
