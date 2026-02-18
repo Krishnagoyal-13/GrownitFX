@@ -15,6 +15,6 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Otherwise forward everything to /portal/public/index.php
-RewriteRule ^ public/index.php [L]
+# Route all /portal/* requests to the front controller in /portal/public.
+RewriteRule ^ public/index.php [QSA,L]
 </IfModule>
