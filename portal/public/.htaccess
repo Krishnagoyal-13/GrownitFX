@@ -1,10 +1,11 @@
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteBase /portal/
 
+# If request is a real file/dir under /portal/public, serve it directly.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-RewriteRule ^ index.php [L]
+# Otherwise route to front controller.
+RewriteRule ^ index.php [QSA,L]
 </IfModule>
