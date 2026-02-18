@@ -18,4 +18,11 @@ $router->post('/logout', 'AuthController@logout');
 
 $router->get('/dashboard', 'DashboardController@index');
 
-$router->dispatch($_SERVER['REQUEST_METHOD'], parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+$routeFromQuery = $_GET['route'] ?? null;
+if (is_string($routeFromQuery) && str_starts_with($routeFromQuery, '/')) {
+    $routePath = $routeFromQuery;
+} else {
+    $routePath = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+}
+
+$router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $routePath);
