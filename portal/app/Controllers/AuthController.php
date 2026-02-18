@@ -59,8 +59,8 @@ final class AuthController extends Controller
 
     public function apiUserStart(): void
     {
-        if (!Csrf::verify($_POST['_csrf'] ?? null)) {
-            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+        if (!Csrf::verify($this->csrfFromRequest())) {
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token. Please refresh the page and try again.'], 419);
             return;
         }
 
@@ -82,8 +82,8 @@ final class AuthController extends Controller
 
     public function apiUserAccess(): void
     {
-        if (!Csrf::verify($_POST['_csrf'] ?? null)) {
-            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+        if (!Csrf::verify($this->csrfFromRequest())) {
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token. Please refresh the page and try again.'], 419);
             return;
         }
 
@@ -119,10 +119,74 @@ final class AuthController extends Controller
 
         try {
             $client = new MT5WebApiClient();
-            $client->completeManagerHandshake((string)$state['cookie_file'], (string)$state['srv_rand']);
-
             $investor = $client->generateMt5Password();
-            $resp = $client->addUser($group, $name, $leverage, $password, $investor, $email);
+
+            $addQuery = [
+                'group' => $group,
+                'name' => $name,
+                'leverage' => $leverage,
+            ];
+            $optionalQueryMap = [
+                'login' => 'login',
+                'rights' => 'rights',
+                'company' => 'company',
+                'language' => 'language',
+                'city' => 'city',
+                'state' => 'state',
+                'zipcode' => 'zipcode',
+                'address' => 'address',
+                'phone' => 'phone',
+                'id' => 'id',
+                'status' => 'status',
+                'comment' => 'comment',
+                'color' => 'color',
+                'pass_phone' => 'pass_phone',
+                'agent' => 'agent',
+            ];
+            foreach ($optionalQueryMap as $inputKey => $queryKey) {
+                $value = trim((string)($_POST[$inputKey] ?? ''));
+                if ($value !== '') {
+                    $addQuery[$queryKey] = $value;
+                }
+            }
+
+            $addBody = [
+                'PassMain' => $password,
+                'PassInvestor' => $investor,
+                'Email' => $email,
+            ];
+            $optionalBodyMap = [
+                'mqid' => 'MQID',
+                'company' => 'Company',
+                'country' => 'Country',
+                'city' => 'City',
+                'state' => 'State',
+                'zipcode' => 'ZipCode',
+                'address' => 'Address',
+                'phone' => 'Phone',
+                'comment' => 'Comment',
+                'status' => 'Status',
+                'color' => 'Color',
+                'language' => 'Language',
+                'id' => 'ID',
+                'pass_phone' => 'PassPhone',
+                'agent' => 'Agent',
+            ];
+            foreach ($optionalBodyMap as $inputKey => $bodyKey) {
+                $value = trim((string)($_POST[$inputKey] ?? ''));
+                if ($value !== '') {
+                    $addBody[$bodyKey] = $value;
+                }
+            }
+
+            $registration = $client->addUserViaHandshake(
+                (string)$state['cookie_file'],
+                (string)$state['srv_rand'],
+                $addQuery,
+                $addBody,
+            );
+
+            $resp = is_array($registration['add'] ?? null) ? $registration['add'] : null;
             if (!is_array($resp) || !$client->retOk($resp)) {
                 throw new \RuntimeException('MT5 register failed');
             }
@@ -157,21 +221,15 @@ final class AuthController extends Controller
             $this->cleanupHandshake((string)$state['cookie_file']);
 
             $this->sendJson([
-                'ok' => true,
                 'connected' => true,
                 'loginId' => (string)$mt5Login,
+                'retcode' => (string)($registration['auth']['retcode'] ?? ''),
             ]);
         } catch (Throwable $e) {
             $this->cleanupHandshake((string)$state['cookie_file']);
             Session::remove('mt5_handshake');
             $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
         }
-
-        $this->json([
-            'ok' => true,
-            'loginId' => (string)$creds['loginId'],
-            'password' => (string)$creds['password'],
-        ]);
     }
 
     public function register(): void
@@ -189,16 +247,9 @@ final class AuthController extends Controller
         }
 
         $this->sendJson([
-            'ok' => true,
             'loginId' => (string)$creds['loginId'],
             'password' => (string)$creds['password'],
         ]);
-    }
-
-    public function register(): void
-    {
-        Session::set('flash_error', 'Use the new register flow button to create account.');
-        $this->redirect('/portal/register');
     }
 
     public function login(): void
@@ -278,48 +329,6 @@ final class AuthController extends Controller
         $this->redirect('/portal/login/index.php');
     }
 
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
     private function sendJson(array $payload, int $status = 200): void
     {
         http_response_code($status);
@@ -332,5 +341,29 @@ final class AuthController extends Controller
         if ($cookieFile !== '' && is_file($cookieFile)) {
             @unlink($cookieFile);
         }
+    }
+
+    private function csrfFromRequest(): ?string
+    {
+        $token = $_POST['_csrf'] ?? null;
+        if (is_string($token) && $token !== '') {
+            return $token;
+        }
+
+        $headerKeys = [
+            'HTTP_X_CSRF_TOKEN',
+            'REDIRECT_HTTP_X_CSRF_TOKEN',
+            'HTTP_X_CSRFTOKEN',
+            'REDIRECT_HTTP_X_CSRFTOKEN',
+        ];
+
+        foreach ($headerKeys as $key) {
+            $header = $_SERVER[$key] ?? null;
+            if (is_string($header) && $header !== '') {
+                return $header;
+            }
+        }
+
+        return null;
     }
 }
