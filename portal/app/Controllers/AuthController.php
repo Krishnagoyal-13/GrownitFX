@@ -42,19 +42,62 @@ final class AuthController extends Controller
         Session::remove('flash_error');
     }
 
-    public function register(): void
+    public function showCredentials(): void
+    {
+        $creds = Session::get('issued_credentials');
+        if (!is_array($creds) || empty($creds['loginId']) || !isset($creds['password'])) {
+            Session::set('flash_error', 'Please complete registration first.');
+            $this->redirect('/portal/register');
+        }
+
+        $this->render('auth/credentials', [
+            'csrf' => Csrf::token(),
+            'error' => Session::get('flash_error'),
+        ]);
+        Session::remove('flash_error');
+    }
+
+    public function apiUserStart(): void
     {
         if (!Csrf::verify($_POST['_csrf'] ?? null)) {
-            http_response_code(419);
-            require dirname(__DIR__, 2) . '/views/errors/419.php';
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
             return;
         }
 
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $rateLimit = new RateLimitModel();
-        if ($rateLimit->tooManyAttempts('register', $ip, 5, 15)) {
-            Session::set('flash_error', 'Too many requests. Please try again later.');
-            $this->redirect('/portal/register');
+        try {
+            $client = new MT5WebApiClient();
+            $start = $client->startManagerHandshake();
+
+            Session::set('mt5_handshake', [
+                'cookie_file' => (string)$start['cookie_file'],
+                'srv_rand' => (string)$start['srv_rand'],
+                'created_at' => time(),
+            ]);
+
+            $this->sendJson(['ok' => true, 'step' => 'start', 'retcode' => (string)($start['retcode'] ?? '')]);
+        } catch (Throwable $e) {
+            $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function apiUserAccess(): void
+    {
+        if (!Csrf::verify($_POST['_csrf'] ?? null)) {
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+            return;
+        }
+
+        $state = Session::get('mt5_handshake');
+        if (!is_array($state) || empty($state['cookie_file']) || empty($state['srv_rand'])) {
+            $this->sendJson(['ok' => false, 'error' => 'Handshake state missing. Call /api/user/start first.'], 400);
+            return;
+        }
+
+        if ((int)($state['created_at'] ?? 0) < (time() - 300)) {
+            $this->cleanupHandshake((string)$state['cookie_file']);
+            Session::remove('mt5_handshake');
+            $this->sendJson(['ok' => false, 'error' => 'Handshake expired. Please retry register.'], 400);
+            return;
         }
 
         $name = trim((string)($_POST['name'] ?? ''));
@@ -69,15 +112,15 @@ final class AuthController extends Controller
         if (!Validator::password($password)) { $errors[] = 'Invalid password length.'; }
         if (!Validator::group($group)) { $errors[] = 'Invalid group.'; }
         if (!Validator::leverage($leverage)) { $errors[] = 'Invalid leverage.'; }
-
         if ($errors !== []) {
-            $rateLimit->hit('register', $ip);
-            Session::set('flash_error', 'Please check your input and try again.');
-            $this->redirect('/portal/register');
+            $this->sendJson(['ok' => false, 'error' => implode(' ', $errors)], 422);
+            return;
         }
 
-        $client = new MT5WebApiClient();
         try {
+            $client = new MT5WebApiClient();
+            $client->completeManagerHandshake((string)$state['cookie_file'], (string)$state['srv_rand']);
+
             $investor = $client->generateMt5Password();
             $resp = $client->addUser($group, $name, $leverage, $password, $investor, $email);
             if (!is_array($resp) || !$client->retOk($resp)) {
@@ -103,15 +146,47 @@ final class AuthController extends Controller
                 $userId = (int)$existing['id'];
             }
 
-            Session::regenerate();
+            Session::set('issued_credentials', [
+                'loginId' => (string)$mt5Login,
+                'password' => $password,
+            ]);
+            Session::set('mt5_connected', true);
             Session::set('user_id', $userId);
             Session::set('mt5_login', $mt5Login);
-            $this->redirect('/portal/dashboard');
-        } catch (Throwable) {
-            $rateLimit->hit('register', $ip);
-            Session::set('flash_error', 'Unable to create account at this time.');
-            $this->redirect('/portal/register');
+            Session::remove('mt5_handshake');
+            $this->cleanupHandshake((string)$state['cookie_file']);
+
+            $this->sendJson([
+                'ok' => true,
+                'connected' => true,
+                'loginId' => (string)$mt5Login,
+            ]);
+        } catch (Throwable $e) {
+            $this->cleanupHandshake((string)$state['cookie_file']);
+            Session::remove('mt5_handshake');
+            $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    public function apiUserGet(): void
+    {
+        $creds = Session::get('issued_credentials');
+        if (!is_array($creds) || empty($creds['loginId']) || !isset($creds['password'])) {
+            $this->sendJson(['ok' => false, 'error' => 'Credentials not available yet. Complete registration first.'], 404);
+            return;
+        }
+
+        $this->sendJson([
+            'ok' => true,
+            'loginId' => (string)$creds['loginId'],
+            'password' => (string)$creds['password'],
+        ]);
+    }
+
+    public function register(): void
+    {
+        Session::set('flash_error', 'Use the new register flow button to create account.');
+        $this->redirect('/portal/register');
     }
 
     public function login(): void
@@ -189,5 +264,19 @@ final class AuthController extends Controller
 
         Session::destroy();
         $this->redirect('/portal/login');
+    }
+
+    private function sendJson(array $payload, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function cleanupHandshake(string $cookieFile): void
+    {
+        if ($cookieFile !== '' && is_file($cookieFile)) {
+            @unlink($cookieFile);
+        }
     }
 }
