@@ -38,7 +38,7 @@
 
 	// Single Page Nav
 	var clickMenu = function() {
-		$('a:not([class="external"])').click(function(){
+		$('a[data-nav-section]').click(function(){
 			var section = $(this).data('nav-section')
 		    $('html, body').animate({
 		        scrollTop: $('[data-section="' + section + '"]').offset().top
