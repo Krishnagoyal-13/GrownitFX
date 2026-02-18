@@ -28,9 +28,9 @@ final class MT5WebApiClient
 
         $this->server = rtrim($server, '/');
         $this->managerLogin = trim((string)($_ENV['MT5_MANAGER_LOGIN'] ?? '10539'));
-        $this->managerPassword = (string)($_ENV['MT5_MANAGER_PASSWORD'] ?? '');
+        $this->managerPassword = (string)($_ENV['MT5_MANAGER_PASSWORD'] ?? 'Hno-1617');
         if ($this->managerPassword === '') {
-            throw new RuntimeException('MT5_MANAGER_PASSWORD is not configured.');
+            throw new RuntimeException('MT5 manager password is not configured.');
         }
 
         $this->version = (int)($_ENV['MT5_VERSION'] ?? 484);
@@ -311,6 +311,68 @@ final class MT5WebApiClient
             return [
                 'connected' => true,
                 'retcode' => (string)($ans['retcode'] ?? ''),
+            ];
+        } finally {
+            try {
+                $this->requestNoAutoPing('GET', '/api/quit');
+            } catch (\Throwable) {
+            }
+            $this->shutdown();
+        }
+    }
+
+
+    public function addUserViaHandshake(string $cookieFile, string $srvRand, array $queryParams, array $jsonBody): array
+    {
+        if ($cookieFile === '' || $srvRand === '') {
+            throw new RuntimeException('Missing handshake state.');
+        }
+
+        $this->cookieFile = $cookieFile;
+        $this->init();
+
+        try {
+            $pwUtf16le = mb_convert_encoding($this->managerPassword, 'UTF-16LE', 'UTF-8');
+            $md5PwRaw = md5($pwUtf16le, true);
+            $passHashRaw = md5($md5PwRaw . 'WebAPI', true);
+
+            $srvRandBin = hex2bin($srvRand);
+            if ($srvRandBin === false) {
+                throw new RuntimeException('srv_rand is not valid hex.');
+            }
+
+            $srvRandAnswer = md5($passHashRaw . $srvRandBin);
+            $cliRandBin = random_bytes(16);
+            $cliRand = bin2hex($cliRandBin);
+
+            $ans = $this->requestNoAutoPing('GET', '/api/auth/answer', [
+                'srv_rand_answer' => $srvRandAnswer,
+                'cli_rand' => $cliRand,
+            ]);
+
+            if (!$this->retOk($ans) || empty($ans['cli_rand_answer'])) {
+                throw new RuntimeException('auth/answer failed: ' . json_encode($ans));
+            }
+
+            $expected = md5($passHashRaw . $cliRandBin);
+            if (!hash_equals($expected, (string)$ans['cli_rand_answer'])) {
+                throw new RuntimeException('auth/answer server validation failed.');
+            }
+
+            $this->isAuthed = true;
+            $this->lastPingAt = time();
+
+            $add = $this->request('POST', '/api/user/add', $queryParams, $jsonBody);
+            if (!is_array($add)) {
+                throw new RuntimeException('MT5 /api/user/add request failed.');
+            }
+
+            return [
+                'auth' => [
+                    'retcode' => (string)($ans['retcode'] ?? ''),
+                    'connected' => true,
+                ],
+                'add' => $add,
             ];
         } finally {
             try {

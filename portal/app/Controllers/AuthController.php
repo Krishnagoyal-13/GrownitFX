@@ -119,10 +119,74 @@ final class AuthController extends Controller
 
         try {
             $client = new MT5WebApiClient();
-            $client->completeManagerHandshake((string)$state['cookie_file'], (string)$state['srv_rand']);
-
             $investor = $client->generateMt5Password();
-            $resp = $client->addUser($group, $name, $leverage, $password, $investor, $email);
+
+            $addQuery = [
+                'group' => $group,
+                'name' => $name,
+                'leverage' => $leverage,
+            ];
+            $optionalQueryMap = [
+                'login' => 'login',
+                'rights' => 'rights',
+                'company' => 'company',
+                'language' => 'language',
+                'city' => 'city',
+                'state' => 'state',
+                'zipcode' => 'zipcode',
+                'address' => 'address',
+                'phone' => 'phone',
+                'id' => 'id',
+                'status' => 'status',
+                'comment' => 'comment',
+                'color' => 'color',
+                'pass_phone' => 'pass_phone',
+                'agent' => 'agent',
+            ];
+            foreach ($optionalQueryMap as $inputKey => $queryKey) {
+                $value = trim((string)($_POST[$inputKey] ?? ''));
+                if ($value !== '') {
+                    $addQuery[$queryKey] = $value;
+                }
+            }
+
+            $addBody = [
+                'PassMain' => $password,
+                'PassInvestor' => $investor,
+                'Email' => $email,
+            ];
+            $optionalBodyMap = [
+                'mqid' => 'MQID',
+                'company' => 'Company',
+                'country' => 'Country',
+                'city' => 'City',
+                'state' => 'State',
+                'zipcode' => 'ZipCode',
+                'address' => 'Address',
+                'phone' => 'Phone',
+                'comment' => 'Comment',
+                'status' => 'Status',
+                'color' => 'Color',
+                'language' => 'Language',
+                'id' => 'ID',
+                'pass_phone' => 'PassPhone',
+                'agent' => 'Agent',
+            ];
+            foreach ($optionalBodyMap as $inputKey => $bodyKey) {
+                $value = trim((string)($_POST[$inputKey] ?? ''));
+                if ($value !== '') {
+                    $addBody[$bodyKey] = $value;
+                }
+            }
+
+            $registration = $client->addUserViaHandshake(
+                (string)$state['cookie_file'],
+                (string)$state['srv_rand'],
+                $addQuery,
+                $addBody,
+            );
+
+            $resp = is_array($registration['add'] ?? null) ? $registration['add'] : null;
             if (!is_array($resp) || !$client->retOk($resp)) {
                 throw new \RuntimeException('MT5 register failed');
             }
@@ -159,6 +223,7 @@ final class AuthController extends Controller
             $this->sendJson([
                 'connected' => true,
                 'loginId' => (string)$mt5Login,
+                'retcode' => (string)($registration['auth']['retcode'] ?? ''),
             ]);
         } catch (Throwable $e) {
             $this->cleanupHandshake((string)$state['cookie_file']);
