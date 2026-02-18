@@ -3,7 +3,7 @@
 <?php if (!empty($error)): ?>
   <div class="error"><?= htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') ?></div>
 <?php endif; ?>
-<form method="post" action="register" autocomplete="off">
+<form method="post" action="/portal/register/index.php" autocomplete="off">
   <input type="hidden" name="_csrf" value="<?= htmlspecialchars((string)$csrf, ENT_QUOTES, 'UTF-8') ?>">
 
   <label for="name">Name</label>
@@ -23,4 +23,4 @@
 
   <button type="submit">Register</button>
 </form>
-<p><a href="login">Have an account? Login</a></p>
+<p><a href="/portal/login/index.php">Have an account? Login</a></p>

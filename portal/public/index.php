@@ -26,9 +26,7 @@ function detectBasePath(): string
     return $entryDir === '/' ? '' : rtrim($entryDir, '/');
 }
 
-
 $basePath = detectBasePath();
-$_ENV['APP_BASE_PATH'] = $basePath;
 $router = new Router($basePath);
 
 $router->get('/', 'AuthController@showLogin');

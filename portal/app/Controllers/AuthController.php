@@ -17,7 +17,7 @@ final class AuthController extends Controller
     public function showLogin(): void
     {
         if (Session::get('mt5_login')) {
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/dashboard/index.php');
         }
 
         $this->render('auth/login', [
@@ -30,7 +30,7 @@ final class AuthController extends Controller
     public function showRegister(): void
     {
         if (Session::get('mt5_login')) {
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/dashboard/index.php');
         }
 
         $this->render('auth/register', [
@@ -54,7 +54,7 @@ final class AuthController extends Controller
         $rateLimit = new RateLimitModel();
         if ($rateLimit->tooManyAttempts('register', $ip, 5, 15)) {
             Session::set('flash_error', 'Too many requests. Please try again later.');
-            $this->redirect('/portal/register');
+            $this->redirect('/portal/register/index.php');
         }
 
         $name = trim((string)($_POST['name'] ?? ''));
@@ -73,7 +73,7 @@ final class AuthController extends Controller
         if ($errors !== []) {
             $rateLimit->hit('register', $ip);
             Session::set('flash_error', 'Please check your input and try again.');
-            $this->redirect('/portal/register');
+            $this->redirect('/portal/register/index.php');
         }
 
         $client = new MT5WebApiClient();
@@ -106,11 +106,11 @@ final class AuthController extends Controller
             Session::regenerate();
             Session::set('user_id', $userId);
             Session::set('mt5_login', $mt5Login);
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/dashboard/index.php');
         } catch (Throwable) {
             $rateLimit->hit('register', $ip);
             Session::set('flash_error', 'Unable to create account at this time.');
-            $this->redirect('/portal/register');
+            $this->redirect('/portal/register/index.php');
         }
     }
 
@@ -129,7 +129,7 @@ final class AuthController extends Controller
         $rateLimit = new RateLimitModel();
         if ($rateLimit->tooManyAttempts('login', $ip, 10, 15, $identity)) {
             Session::set('flash_error', 'Invalid credentials.');
-            $this->redirect('/portal/login');
+            $this->redirect('/portal/login/index.php');
         }
 
         $mt5Login = (int)$loginInput;
@@ -138,7 +138,7 @@ final class AuthController extends Controller
         if ($mt5Login <= 0 || !Validator::password($password)) {
             $rateLimit->hit('login', $ip, $identity);
             Session::set('flash_error', 'Invalid credentials.');
-            $this->redirect('/portal/login');
+            $this->redirect('/portal/login/index.php');
         }
 
         $client = new MT5WebApiClient();
@@ -171,11 +171,11 @@ final class AuthController extends Controller
             Session::regenerate();
             Session::set('user_id', $userId);
             Session::set('mt5_login', $mt5Login);
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/dashboard/index.php');
         } catch (Throwable) {
             $rateLimit->hit('login', $ip, $identity);
             Session::set('flash_error', 'Invalid credentials.');
-            $this->redirect('/portal/login');
+            $this->redirect('/portal/login/index.php');
         }
     }
 
@@ -188,6 +188,6 @@ final class AuthController extends Controller
         }
 
         Session::destroy();
-        $this->redirect('/portal/login');
+        $this->redirect('/portal/login/index.php');
     }
 }
