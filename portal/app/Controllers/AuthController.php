@@ -60,7 +60,7 @@ final class AuthController extends Controller
     public function apiUserStart(): void
     {
         if (!Csrf::verify($_POST['_csrf'] ?? null)) {
-            $this->json(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
             return;
         }
 
@@ -74,29 +74,29 @@ final class AuthController extends Controller
                 'created_at' => time(),
             ]);
 
-            $this->json(['ok' => true, 'step' => 'start', 'retcode' => (string)($start['retcode'] ?? '')]);
+            $this->sendJson(['ok' => true, 'step' => 'start', 'retcode' => (string)($start['retcode'] ?? '')]);
         } catch (Throwable $e) {
-            $this->json(['ok' => false, 'error' => $e->getMessage()], 500);
+            $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     public function apiUserAccess(): void
     {
         if (!Csrf::verify($_POST['_csrf'] ?? null)) {
-            $this->json(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
             return;
         }
 
         $state = Session::get('mt5_handshake');
         if (!is_array($state) || empty($state['cookie_file']) || empty($state['srv_rand'])) {
-            $this->json(['ok' => false, 'error' => 'Handshake state missing. Call /api/user/start first.'], 400);
+            $this->sendJson(['ok' => false, 'error' => 'Handshake state missing. Call /api/user/start first.'], 400);
             return;
         }
 
         if ((int)($state['created_at'] ?? 0) < (time() - 300)) {
             $this->cleanupHandshake((string)$state['cookie_file']);
             Session::remove('mt5_handshake');
-            $this->json(['ok' => false, 'error' => 'Handshake expired. Please retry register.'], 400);
+            $this->sendJson(['ok' => false, 'error' => 'Handshake expired. Please retry register.'], 400);
             return;
         }
 
@@ -113,7 +113,7 @@ final class AuthController extends Controller
         if (!Validator::group($group)) { $errors[] = 'Invalid group.'; }
         if (!Validator::leverage($leverage)) { $errors[] = 'Invalid leverage.'; }
         if ($errors !== []) {
-            $this->json(['ok' => false, 'error' => implode(' ', $errors)], 422);
+            $this->sendJson(['ok' => false, 'error' => implode(' ', $errors)], 422);
             return;
         }
 
@@ -156,7 +156,7 @@ final class AuthController extends Controller
             Session::remove('mt5_handshake');
             $this->cleanupHandshake((string)$state['cookie_file']);
 
-            $this->json([
+            $this->sendJson([
                 'ok' => true,
                 'connected' => true,
                 'loginId' => (string)$mt5Login,
@@ -164,19 +164,31 @@ final class AuthController extends Controller
         } catch (Throwable $e) {
             $this->cleanupHandshake((string)$state['cookie_file']);
             Session::remove('mt5_handshake');
-            $this->json(['ok' => false, 'error' => $e->getMessage()], 500);
+            $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
         }
+
+        $this->json([
+            'ok' => true,
+            'loginId' => (string)$creds['loginId'],
+            'password' => (string)$creds['password'],
+        ]);
+    }
+
+    public function register(): void
+    {
+        Session::set('flash_error', 'Use the new register flow button to create account.');
+        $this->redirect('/portal/register');
     }
 
     public function apiUserGet(): void
     {
         $creds = Session::get('issued_credentials');
         if (!is_array($creds) || empty($creds['loginId']) || !isset($creds['password'])) {
-            $this->json(['ok' => false, 'error' => 'Credentials not available yet. Complete registration first.'], 404);
+            $this->sendJson(['ok' => false, 'error' => 'Credentials not available yet. Complete registration first.'], 404);
             return;
         }
 
-        $this->json([
+        $this->sendJson([
             'ok' => true,
             'loginId' => (string)$creds['loginId'],
             'password' => (string)$creds['password'],
@@ -295,6 +307,20 @@ final class AuthController extends Controller
     }
 
     private function json(array $payload, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function cleanupHandshake(string $cookieFile): void
+    {
+        if ($cookieFile !== '' && is_file($cookieFile)) {
+            @unlink($cookieFile);
+        }
+    }
+
+    private function sendJson(array $payload, int $status = 200): void
     {
         http_response_code($status);
         header('Content-Type: application/json; charset=UTF-8');
