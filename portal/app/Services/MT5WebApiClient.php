@@ -240,6 +240,49 @@ final class MT5WebApiClient
         $this->lastPingAt = time();
     }
 
+    public function runDiagnostics(): array
+    {
+        $result = [
+            'server' => $this->server,
+            'managerLogin' => $this->managerLogin === '' ? '(missing)' : ('***' . substr($this->managerLogin, -2)),
+            'version' => $this->version,
+            'agent' => $this->agent,
+            'auth' => 'not-run',
+            'accessPing' => 'not-run',
+            'retcode' => null,
+            'error' => null,
+        ];
+
+        $this->cookieFile = sys_get_temp_dir() . '/mt5_diag_' . bin2hex(random_bytes(12)) . '.cookie';
+
+        try {
+            $this->init();
+            $this->auth($this->managerLogin, $this->managerPassword);
+            $result['auth'] = 'ok';
+
+            $resp = $this->requestNoAutoPing('GET', '/api/test/access');
+            $result['retcode'] = (string)($resp['retcode'] ?? '');
+            $result['accessPing'] = $this->retOk($resp) ? 'ok' : 'failed';
+            return $result;
+        } catch (\Throwable $e) {
+            $result['auth'] = $result['auth'] === 'ok' ? 'ok' : 'failed';
+            $result['accessPing'] = $result['accessPing'] === 'ok' ? 'ok' : 'failed';
+            $result['error'] = $e->getMessage();
+            return $result;
+        } finally {
+            try {
+                if ($this->ch) {
+                    $this->request('GET', '/api/quit');
+                }
+            } catch (\Throwable) {
+            }
+            $this->shutdown();
+            if ($this->cookieFile !== '' && is_file($this->cookieFile)) {
+                @unlink($this->cookieFile);
+            }
+        }
+    }
+
     public function ping(): array|false
     {
         return $this->withSession(fn(self $c) => $c->request('GET', '/api/test/access'));
