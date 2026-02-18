@@ -1,0 +1,15 @@
+<Files ".env">
+  Require all denied
+</Files>
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# If request is a real file/dir in /portal, serve it (e.g. /portal/public/...)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Otherwise forward everything to /portal/public/index.php
+RewriteRule ^ public/index.php [L]
+</IfModule>
