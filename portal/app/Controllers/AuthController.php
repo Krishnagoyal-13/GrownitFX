@@ -14,6 +14,9 @@ use Throwable;
 
 final class AuthController extends Controller
 {
+    private const REGISTER_GROUP = 'demo\\forex-hedge-usd-01';
+    private const REGISTER_LEVERAGE = 100;
+
     public function showLogin(): void
     {
         if (Session::get('mt5_login')) {
@@ -36,8 +39,6 @@ final class AuthController extends Controller
         $this->render('auth/register', [
             'csrf' => Csrf::token(),
             'error' => Session::get('flash_error'),
-            'defaultGroup' => (string)($_ENV['DEFAULT_GROUP'] ?? 'demo\\forex-hedge-usd-01'),
-            'defaultLeverage' => (int)($_ENV['DEFAULT_LEVERAGE'] ?? 100),
         ]);
         Session::remove('flash_error');
     }
@@ -64,20 +65,7 @@ final class AuthController extends Controller
             return;
         }
 
-        try {
-            $client = new MT5WebApiClient();
-            $start = $client->startManagerHandshake();
-
-            Session::set('mt5_handshake', [
-                'cookie_file' => (string)$start['cookie_file'],
-                'srv_rand' => (string)$start['srv_rand'],
-                'created_at' => time(),
-            ]);
-
-            $this->sendJson(['ok' => true, 'step' => 'start', 'retcode' => (string)($start['retcode'] ?? '')]);
-        } catch (Throwable $e) {
-            $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
-        }
+        $this->sendJson(['ok' => true, 'step' => 'start']);
     }
 
     public function apiUserAccess(): void
@@ -87,24 +75,11 @@ final class AuthController extends Controller
             return;
         }
 
-        $state = Session::get('mt5_handshake');
-        if (!is_array($state) || empty($state['cookie_file']) || empty($state['srv_rand'])) {
-            $this->sendJson(['ok' => false, 'error' => 'Handshake state missing. Call /api/user/start first.'], 400);
-            return;
-        }
-
-        if ((int)($state['created_at'] ?? 0) < (time() - 300)) {
-            $this->cleanupHandshake((string)$state['cookie_file']);
-            Session::remove('mt5_handshake');
-            $this->sendJson(['ok' => false, 'error' => 'Handshake expired. Please retry register.'], 400);
-            return;
-        }
-
         $name = trim((string)($_POST['name'] ?? ''));
         $email = trim((string)($_POST['email'] ?? ''));
         $password = (string)($_POST['mt5_password'] ?? '');
-        $group = trim((string)($_POST['group'] ?? ($_ENV['DEFAULT_GROUP'] ?? '')));
-        $leverage = (int)($_POST['leverage'] ?? ($_ENV['DEFAULT_LEVERAGE'] ?? 100));
+        $group = self::REGISTER_GROUP;
+        $leverage = self::REGISTER_LEVERAGE;
 
         $errors = [];
         if (!Validator::name($name)) { $errors[] = 'Invalid name.'; }
@@ -119,74 +94,8 @@ final class AuthController extends Controller
 
         try {
             $client = new MT5WebApiClient();
-            $investor = $client->generateMt5Password();
-
-            $addQuery = [
-                'group' => $group,
-                'name' => $name,
-                'leverage' => $leverage,
-            ];
-            $optionalQueryMap = [
-                'login' => 'login',
-                'rights' => 'rights',
-                'company' => 'company',
-                'language' => 'language',
-                'city' => 'city',
-                'state' => 'state',
-                'zipcode' => 'zipcode',
-                'address' => 'address',
-                'phone' => 'phone',
-                'id' => 'id',
-                'status' => 'status',
-                'comment' => 'comment',
-                'color' => 'color',
-                'pass_phone' => 'pass_phone',
-                'agent' => 'agent',
-            ];
-            foreach ($optionalQueryMap as $inputKey => $queryKey) {
-                $value = trim((string)($_POST[$inputKey] ?? ''));
-                if ($value !== '') {
-                    $addQuery[$queryKey] = $value;
-                }
-            }
-
-            $addBody = [
-                'PassMain' => $password,
-                'PassInvestor' => $investor,
-                'Email' => $email,
-            ];
-            $optionalBodyMap = [
-                'mqid' => 'MQID',
-                'company' => 'Company',
-                'country' => 'Country',
-                'city' => 'City',
-                'state' => 'State',
-                'zipcode' => 'ZipCode',
-                'address' => 'Address',
-                'phone' => 'Phone',
-                'comment' => 'Comment',
-                'status' => 'Status',
-                'color' => 'Color',
-                'language' => 'Language',
-                'id' => 'ID',
-                'pass_phone' => 'PassPhone',
-                'agent' => 'Agent',
-            ];
-            foreach ($optionalBodyMap as $inputKey => $bodyKey) {
-                $value = trim((string)($_POST[$inputKey] ?? ''));
-                if ($value !== '') {
-                    $addBody[$bodyKey] = $value;
-                }
-            }
-
-            $registration = $client->addUserViaHandshake(
-                (string)$state['cookie_file'],
-                (string)$state['srv_rand'],
-                $addQuery,
-                $addBody,
-            );
-
-            $resp = is_array($registration['add'] ?? null) ? $registration['add'] : null;
+            $registration = $client->registerWebsiteUser($name, $email, $password);
+            $resp = is_array($registration['response'] ?? null) ? $registration['response'] : null;
             if (!is_array($resp) || !$client->retOk($resp)) {
                 throw new \RuntimeException('MT5 register failed');
             }
@@ -217,17 +126,13 @@ final class AuthController extends Controller
             Session::set('mt5_connected', true);
             Session::set('user_id', $userId);
             Session::set('mt5_login', $mt5Login);
-            Session::remove('mt5_handshake');
-            $this->cleanupHandshake((string)$state['cookie_file']);
 
             $this->sendJson([
                 'connected' => true,
                 'loginId' => (string)$mt5Login,
-                'retcode' => (string)($registration['auth']['retcode'] ?? ''),
+                'retcode' => (string)($resp['retcode'] ?? ''),
             ]);
         } catch (Throwable $e) {
-            $this->cleanupHandshake((string)$state['cookie_file']);
-            Session::remove('mt5_handshake');
             $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
         }
     }
@@ -334,13 +239,6 @@ final class AuthController extends Controller
         http_response_code($status);
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
     }
 
     private function csrfFromRequest(): ?string

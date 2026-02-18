@@ -16,33 +16,6 @@
   <label for="mt5_password">MT5 Password (8-32 chars)</label>
   <input id="mt5_password" name="mt5_password" type="password" required minlength="8" maxlength="32">
 
-  <label for="group">Group</label>
-  <input id="group" name="group" type="text" required value="<?= htmlspecialchars((string)$defaultGroup, ENT_QUOTES, 'UTF-8') ?>">
-
-  <label for="leverage">Leverage (1-2000)</label>
-  <input id="leverage" name="leverage" type="number" min="1" max="2000" required value="<?= (int)$defaultLeverage ?>">
-
-  <label for="company">Company (optional)</label>
-  <input id="company" name="company" type="text" maxlength="128">
-
-  <label for="country">Country (optional)</label>
-  <input id="country" name="country" type="text" maxlength="128">
-
-  <label for="city">City (optional)</label>
-  <input id="city" name="city" type="text" maxlength="128">
-
-  <label for="state">State (optional)</label>
-  <input id="state" name="state" type="text" maxlength="128">
-
-  <label for="zipcode">Zip Code (optional)</label>
-  <input id="zipcode" name="zipcode" type="text" maxlength="64">
-
-  <label for="address">Address (optional)</label>
-  <input id="address" name="address" type="text" maxlength="255">
-
-  <label for="phone">Phone (optional)</label>
-  <input id="phone" name="phone" type="text" maxlength="64">
-
   <button id="register-btn" type="submit">Register</button>
 </form>
 <p><a href="<?= htmlspecialchars((string)$basePath, ENT_QUOTES, 'UTF-8') ?>/login">Have an account? Login</a></p>
