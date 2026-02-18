@@ -1,0 +1,10 @@
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# Fallback: route non-existent /portal/* URLs through the portal front controller
+# This helps on hosts where nested /portal/.htaccess rewrite handling is inconsistent.
+RewriteCond %{REQUEST_URI} ^/portal/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^portal/.*$ portal/public/index.php [L,QSA]
+</IfModule>
