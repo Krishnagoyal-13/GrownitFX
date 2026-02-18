@@ -60,7 +60,7 @@ final class AuthController extends Controller
     public function apiUserStart(): void
     {
         if (!Csrf::verify($this->csrfFromRequest())) {
-            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token. Please refresh the page and try again.'], 419);
             return;
         }
 
@@ -83,7 +83,7 @@ final class AuthController extends Controller
     public function apiUserAccess(): void
     {
         if (!Csrf::verify($this->csrfFromRequest())) {
-            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+            $this->sendJson(['ok' => false, 'error' => 'Invalid CSRF token. Please refresh the page and try again.'], 419);
             return;
         }
 
@@ -350,7 +350,20 @@ final class AuthController extends Controller
             return $token;
         }
 
-        $header = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
-        return is_string($header) ? $header : null;
+        $headerKeys = [
+            'HTTP_X_CSRF_TOKEN',
+            'REDIRECT_HTTP_X_CSRF_TOKEN',
+            'HTTP_X_CSRFTOKEN',
+            'REDIRECT_HTTP_X_CSRFTOKEN',
+        ];
+
+        foreach ($headerKeys as $key) {
+            $header = $_SERVER[$key] ?? null;
+            if (is_string($header) && $header !== '') {
+                return $header;
+            }
+        }
+
+        return null;
     }
 }

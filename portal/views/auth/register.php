@@ -53,7 +53,6 @@
   const btn = document.getElementById('register-btn');
   const err = document.getElementById('register-error');
   const basePath = <?= json_encode((string)$basePath, JSON_UNESCAPED_SLASHES) ?>;
-  const csrf = form.querySelector('input[name="_csrf"]')?.value || '';
   const endpointCandidates = (path) => [
     `${basePath}${path}`,
     `${basePath}/public/index.php?route=${encodeURIComponent(path)}`,
@@ -97,6 +96,7 @@
     btn.textContent = 'Connecting...';
 
     const payload = new FormData(form);
+    const csrf = form.querySelector('input[name="_csrf"]')?.value || '';
 
     try {
       const { response: startResp, json: startJson } = await fetchJson('/api/user/start', {
