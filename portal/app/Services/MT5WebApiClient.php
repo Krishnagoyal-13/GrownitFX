@@ -240,6 +240,87 @@ final class MT5WebApiClient
         $this->lastPingAt = time();
     }
 
+
+    public function startManagerHandshake(): array
+    {
+        $this->cookieFile = sys_get_temp_dir() . '/mt5_step_' . bin2hex(random_bytes(12)) . '.cookie';
+        $this->init();
+
+        try {
+            $start = $this->requestNoAutoPing('GET', '/api/auth/start', [
+                'version' => $this->version,
+                'agent' => $this->agent,
+                'login' => $this->managerLogin,
+                'type' => 'manager',
+            ]);
+
+            if (!$this->retOk($start) || empty($start['srv_rand'])) {
+                throw new RuntimeException('auth/start failed: ' . json_encode($start));
+            }
+
+            return [
+                'cookie_file' => $this->cookieFile,
+                'srv_rand' => (string)$start['srv_rand'],
+                'retcode' => (string)($start['retcode'] ?? ''),
+            ];
+        } finally {
+            $this->shutdown();
+        }
+    }
+
+    public function completeManagerHandshake(string $cookieFile, string $srvRand): array
+    {
+        if ($cookieFile === '' || $srvRand === '') {
+            throw new RuntimeException('Missing handshake state.');
+        }
+
+        $this->cookieFile = $cookieFile;
+        $this->init();
+
+        try {
+            $pwUtf16le = mb_convert_encoding($this->managerPassword, 'UTF-16LE', 'UTF-8');
+            $md5PwRaw = md5($pwUtf16le, true);
+            $passHashRaw = md5($md5PwRaw . 'WebAPI', true);
+
+            $srvRandBin = hex2bin($srvRand);
+            if ($srvRandBin === false) {
+                throw new RuntimeException('srv_rand is not valid hex.');
+            }
+
+            $srvRandAnswer = md5($passHashRaw . $srvRandBin);
+            $cliRandBin = random_bytes(16);
+            $cliRand = bin2hex($cliRandBin);
+
+            $ans = $this->requestNoAutoPing('GET', '/api/auth/answer', [
+                'srv_rand_answer' => $srvRandAnswer,
+                'cli_rand' => $cliRand,
+            ]);
+
+            if (!$this->retOk($ans) || empty($ans['cli_rand_answer'])) {
+                throw new RuntimeException('auth/answer failed: ' . json_encode($ans));
+            }
+
+            $expected = md5($passHashRaw . $cliRandBin);
+            if (!hash_equals($expected, (string)$ans['cli_rand_answer'])) {
+                throw new RuntimeException('auth/answer server validation failed.');
+            }
+
+            $this->isAuthed = true;
+            $this->lastPingAt = time();
+
+            return [
+                'connected' => true,
+                'retcode' => (string)($ans['retcode'] ?? ''),
+            ];
+        } finally {
+            try {
+                $this->requestNoAutoPing('GET', '/api/quit');
+            } catch (\Throwable) {
+            }
+            $this->shutdown();
+        }
+    }
+
     public function runDiagnostics(): array
     {
         $result = [

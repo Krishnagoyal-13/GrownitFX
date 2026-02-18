@@ -45,6 +45,11 @@ $router->post('/login', 'AuthController@login');
 
 $router->get('/register', 'AuthController@showRegister');
 $router->post('/register', 'AuthController@register');
+$router->get('/credentials', 'AuthController@showCredentials');
+
+$router->post('/api/user/start', 'AuthController@apiUserStart');
+$router->post('/api/user/access', 'AuthController@apiUserAccess');
+$router->get('/api/user/get', 'AuthController@apiUserGet');
 
 $router->post('/logout', 'AuthController@logout');
 
