@@ -3,7 +3,8 @@
 <?php if (!empty($error)): ?>
   <div class="error"><?= htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') ?></div>
 <?php endif; ?>
-<form method="post" action="/portal/public/index.php?route=/register" autocomplete="off">
+<div id="register-error" class="error" style="display:none"></div>
+<form id="register-form" method="post" action="<?= htmlspecialchars((string)$basePath, ENT_QUOTES, 'UTF-8') ?>/register" autocomplete="off">
   <input type="hidden" name="_csrf" value="<?= htmlspecialchars((string)$csrf, ENT_QUOTES, 'UTF-8') ?>">
 
   <label for="name">Name</label>
@@ -21,6 +22,60 @@
   <label for="leverage">Leverage (1-2000)</label>
   <input id="leverage" name="leverage" type="number" min="1" max="2000" required value="<?= (int)$defaultLeverage ?>">
 
-  <button type="submit">Register</button>
+  <button id="register-btn" type="submit">Register</button>
 </form>
-<p><a href="/portal/public/index.php?route=/login">Have an account? Login</a></p>
+<p><a href="<?= htmlspecialchars((string)$basePath, ENT_QUOTES, 'UTF-8') ?>/login">Have an account? Login</a></p>
+
+<script>
+(() => {
+  const form = document.getElementById('register-form');
+  const btn = document.getElementById('register-btn');
+  const err = document.getElementById('register-error');
+  const basePath = <?= json_encode((string)$basePath, JSON_UNESCAPED_SLASHES) ?>;
+
+  const setError = (msg) => {
+    err.textContent = msg;
+    err.style.display = msg ? 'block' : 'none';
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setError('');
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+
+    const payload = new FormData(form);
+
+    try {
+      const startResp = await fetch(`${basePath}/api/user/start`, {
+        method: 'POST',
+        body: payload,
+        headers: { 'Accept': 'application/json' },
+      });
+      const startJson = await startResp.json();
+      if (!startResp.ok || !startJson.ok) {
+        throw new Error(startJson.error || 'MT5 start handshake failed.');
+      }
+
+      btn.textContent = 'Authorizing...';
+
+      const accessResp = await fetch(`${basePath}/api/user/access`, {
+        method: 'POST',
+        body: payload,
+        headers: { 'Accept': 'application/json' },
+      });
+      const accessJson = await accessResp.json();
+      if (!accessResp.ok || !accessJson.ok || accessJson.connected !== true) {
+        throw new Error(accessJson.error || 'MT5 access handshake failed.');
+      }
+
+      btn.textContent = 'Creating account...';
+      form.submit();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Registration failed.');
+      btn.disabled = false;
+      btn.textContent = 'Register';
+    }
+  });
+})();
+</script>

@@ -10,28 +10,41 @@ final class MT5WebApiClient
     private string $server;
     private string $managerLogin;
     private string $managerPassword;
-    private string $version;
+    private int $version;
     private string $agent;
+    private bool $debug;
+
     private $ch = null;
     private string $cookieFile = '';
+    private bool $isAuthed = false;
+    private int $lastPingAt = 0;
 
     public function __construct()
     {
-        $this->server = rtrim((string)($_ENV['MT5_SERVER'] ?? ''), '/');
-        $this->managerLogin = (string)($_ENV['MT5_MANAGER_LOGIN'] ?? '');
+        $server = trim((string)($_ENV['MT5_SERVER'] ?? ''));
+        if ($server === '') {
+            throw new RuntimeException('MT5_SERVER is not configured.');
+        }
+
+        if (!preg_match('#^https?://#i', $server)) {
+            $server = 'https://' . $server;
+        }
+
+        $this->server = rtrim($server, '/');
+        $this->managerLogin = trim((string)($_ENV['MT5_MANAGER_LOGIN'] ?? ''));
         $this->managerPassword = (string)($_ENV['MT5_MANAGER_PASSWORD'] ?? '');
-        $this->version = (string)($_ENV['MT5_VERSION'] ?? '1');
-        $this->agent = (string)($_ENV['MT5_AGENT'] ?? 'PortalMT5Client/1.0');
+        $this->version = (int)($_ENV['MT5_VERSION'] ?? 484);
+        $this->agent = trim((string)($_ENV['MT5_AGENT'] ?? 'test'));
+        $this->debug = ((int)($_ENV['MT5_DEBUG'] ?? 0) === 1);
     }
 
     public function withSession(callable $callback): mixed
     {
         $this->cookieFile = sys_get_temp_dir() . '/mt5_' . bin2hex(random_bytes(12)) . '.cookie';
+
         try {
             $this->init();
-            if (!$this->auth($this->managerLogin, $this->managerPassword)) {
-                throw new RuntimeException('MT5 auth failed.');
-            }
+            $this->auth($this->managerLogin, $this->managerPassword);
             $result = $callback($this);
             $this->request('GET', '/api/quit');
             return $result;
@@ -45,6 +58,8 @@ final class MT5WebApiClient
 
     private function init(): void
     {
+        $this->shutdown();
+
         $this->ch = curl_init();
         if (!$this->ch) {
             throw new RuntimeException('Unable to initialize cURL.');
@@ -62,11 +77,18 @@ final class MT5WebApiClient
             CURLOPT_COOKIEFILE => $this->cookieFile,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+            CURLOPT_FORBID_REUSE => false,
+            CURLOPT_FRESH_CONNECT => false,
             CURLOPT_HTTPHEADER => [
                 'Connection: Keep-Alive',
+                'Accept: */*',
                 'Content-Type: application/x-www-form-urlencoded',
+                'User-Agent: MetaTrader 5 Web API/5.2005 (Linux; x64)',
             ],
         ]);
+
+        $this->isAuthed = false;
+        $this->lastPingAt = 0;
     }
 
     private function shutdown(): void
@@ -74,61 +96,116 @@ final class MT5WebApiClient
         if (is_resource($this->ch) || $this->ch instanceof \CurlHandle) {
             curl_close($this->ch);
         }
+
         $this->ch = null;
+        $this->isAuthed = false;
+        $this->lastPingAt = 0;
     }
 
-    private function request(string $method, string $path, array $queryParams = [], ?array $jsonBody = null): array|false
+    private function requestRaw(string $method, string $path, array $queryParams = [], ?string $body = null): array
     {
         if (!$this->ch) {
             throw new RuntimeException('cURL not initialized.');
         }
 
         $url = $this->server . $path;
-        if (!empty($queryParams)) {
+        if ($queryParams !== []) {
             $url .= '?' . http_build_query($queryParams, '', '&', PHP_QUERY_RFC3986);
         }
 
         curl_setopt($this->ch, CURLOPT_URL, $url);
 
         if (strtoupper($method) === 'POST') {
+            curl_setopt($this->ch, CURLOPT_HTTPGET, false);
+            curl_setopt($this->ch, CURLOPT_CUSTOMREQUEST, 'POST');
             curl_setopt($this->ch, CURLOPT_POST, true);
-            $payload = $jsonBody !== null ? json_encode($jsonBody, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '{}';
-            curl_setopt($this->ch, CURLOPT_POSTFIELDS, $payload);
+            curl_setopt($this->ch, CURLOPT_POSTFIELDS, $body ?? '');
         } else {
             curl_setopt($this->ch, CURLOPT_HTTPGET, true);
+            curl_setopt($this->ch, CURLOPT_CUSTOMREQUEST, 'GET');
             curl_setopt($this->ch, CURLOPT_POST, false);
             curl_setopt($this->ch, CURLOPT_POSTFIELDS, null);
         }
 
         $response = curl_exec($this->ch);
         if ($response === false) {
-            return false;
+            throw new RuntimeException('cURL error: ' . curl_error($this->ch));
         }
 
+        $httpCode = (int)curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
         $headerSize = (int)curl_getinfo($this->ch, CURLINFO_HEADER_SIZE);
-        $body = substr($response, $headerSize);
+
+        $headers = substr($response, 0, $headerSize);
+        $respBody = substr($response, $headerSize);
+
+        if ($this->debug) {
+            error_log(sprintf('[MT5] %s %s => %d body=%s', strtoupper($method), $url, $httpCode, $respBody));
+        }
+
+        return [$httpCode, $respBody, $headers];
+    }
+
+    private function requestNoAutoPing(string $method, string $path, array $queryParams = [], ?string $body = null): array
+    {
+        return $this->decodeResponse($this->requestRaw($method, $path, $queryParams, $body));
+    }
+
+    private function request(string $method, string $path, array $queryParams = [], ?array $jsonBody = null): array|false
+    {
+        try {
+            $this->maybePing();
+            $payload = $jsonBody !== null
+                ? json_encode($jsonBody, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                : null;
+            if ($jsonBody !== null && $payload === false) {
+                throw new RuntimeException('JSON encode failed.');
+            }
+
+            return $this->decodeResponse($this->requestRaw($method, $path, $queryParams, $payload));
+        } catch (\Throwable $e) {
+            if ($this->debug) {
+                error_log('[MT5] request failed: ' . $e->getMessage());
+            }
+            return false;
+        }
+    }
+
+    private function decodeResponse(array $raw): array
+    {
+        [$httpCode, $body] = $raw;
+        if ($httpCode !== 200) {
+            throw new RuntimeException('MT5 HTTP ' . $httpCode . ': ' . $body);
+        }
 
         $decoded = json_decode($body, true);
-        return is_array($decoded) ? $decoded : false;
+        if (!is_array($decoded)) {
+            throw new RuntimeException('MT5 invalid JSON response: ' . $body);
+        }
+
+        return $decoded;
     }
 
     public function retOk(array $resp): bool
     {
         $ret = (string)($resp['retcode'] ?? '');
-        return str_starts_with($ret, '0');
+        return str_starts_with(trim($ret), '0');
     }
 
-    private function auth(string $login, string $password): bool
+    private function auth(string $login, string $password): void
     {
-        $start = $this->request('GET', '/api/auth/start', [
+        if ($login === '' || $password === '') {
+            throw new RuntimeException('MT5 manager credentials are missing.');
+        }
+
+        $start = $this->requestNoAutoPing('GET', '/api/auth/start', [
             'version' => $this->version,
             'agent' => $this->agent,
             'login' => $login,
             'type' => 'manager',
         ]);
 
-        if (!is_array($start) || !$this->retOk($start) || empty($start['srv_rand'])) {
-            return false;
+        if (!$this->retOk($start) || empty($start['srv_rand'])) {
+            throw new RuntimeException('auth/start failed: ' . json_encode($start));
         }
 
         $pwUtf16le = mb_convert_encoding($password, 'UTF-16LE', 'UTF-8');
@@ -138,45 +215,215 @@ final class MT5WebApiClient
         $srvRandHex = (string)$start['srv_rand'];
         $srvRandBin = hex2bin($srvRandHex);
         if ($srvRandBin === false) {
-            return false;
+            throw new RuntimeException('srv_rand is not valid hex.');
         }
 
         $srvRandAnswer = md5($passHashRaw . $srvRandBin);
-
         $cliRandBin = random_bytes(16);
         $cliRandHex = bin2hex($cliRandBin);
 
-        $ans = $this->request('GET', '/api/auth/answer', [
+        $ans = $this->requestNoAutoPing('GET', '/api/auth/answer', [
             'srv_rand_answer' => $srvRandAnswer,
             'cli_rand' => $cliRandHex,
         ]);
 
-        if (!is_array($ans) || !$this->retOk($ans) || empty($ans['cli_rand_answer'])) {
-            return false;
+        if (!$this->retOk($ans) || empty($ans['cli_rand_answer'])) {
+            throw new RuntimeException('auth/answer failed: ' . json_encode($ans));
         }
 
         $expectedCliRandAnswer = md5($passHashRaw . $cliRandBin);
         if (!hash_equals($expectedCliRandAnswer, (string)$ans['cli_rand_answer'])) {
-            return false;
+            throw new RuntimeException('auth/answer validation failed.');
         }
 
-        return true;
+        $this->isAuthed = true;
+        $this->lastPingAt = time();
+    }
+
+
+    public function startManagerHandshake(): array
+    {
+        $this->cookieFile = sys_get_temp_dir() . '/mt5_step_' . bin2hex(random_bytes(12)) . '.cookie';
+        $this->init();
+
+        try {
+            $start = $this->requestNoAutoPing('GET', '/api/auth/start', [
+                'version' => $this->version,
+                'agent' => $this->agent,
+                'login' => $this->managerLogin,
+                'type' => 'manager',
+            ]);
+
+            if (!$this->retOk($start) || empty($start['srv_rand'])) {
+                throw new RuntimeException('auth/start failed: ' . json_encode($start));
+            }
+
+            return [
+                'cookie_file' => $this->cookieFile,
+                'srv_rand' => (string)$start['srv_rand'],
+                'retcode' => (string)($start['retcode'] ?? ''),
+            ];
+        } finally {
+            $this->shutdown();
+        }
+    }
+
+    public function completeManagerHandshake(string $cookieFile, string $srvRand): array
+    {
+        if ($cookieFile === '' || $srvRand === '') {
+            throw new RuntimeException('Missing handshake state.');
+        }
+
+        $this->cookieFile = $cookieFile;
+        $this->init();
+
+        try {
+            $pwUtf16le = mb_convert_encoding($this->managerPassword, 'UTF-16LE', 'UTF-8');
+            $md5PwRaw = md5($pwUtf16le, true);
+            $passHashRaw = md5($md5PwRaw . 'WebAPI', true);
+
+            $srvRandBin = hex2bin($srvRand);
+            if ($srvRandBin === false) {
+                throw new RuntimeException('srv_rand is not valid hex.');
+            }
+
+            $srvRandAnswer = md5($passHashRaw . $srvRandBin);
+            $cliRandBin = random_bytes(16);
+            $cliRand = bin2hex($cliRandBin);
+
+            $ans = $this->requestNoAutoPing('GET', '/api/auth/answer', [
+                'srv_rand_answer' => $srvRandAnswer,
+                'cli_rand' => $cliRand,
+            ]);
+
+            if (!$this->retOk($ans) || empty($ans['cli_rand_answer'])) {
+                throw new RuntimeException('auth/answer failed: ' . json_encode($ans));
+            }
+
+            $expected = md5($passHashRaw . $cliRandBin);
+            if (!hash_equals($expected, (string)$ans['cli_rand_answer'])) {
+                throw new RuntimeException('auth/answer server validation failed.');
+            }
+
+            $this->isAuthed = true;
+            $this->lastPingAt = time();
+
+            return [
+                'connected' => true,
+                'retcode' => (string)($ans['retcode'] ?? ''),
+            ];
+        } finally {
+            try {
+                $this->requestNoAutoPing('GET', '/api/quit');
+            } catch (\Throwable) {
+            }
+            $this->shutdown();
+        }
+    }
+
+    public function runDiagnostics(): array
+    {
+        $result = [
+            'server' => $this->server,
+            'managerLogin' => $this->managerLogin === '' ? '(missing)' : ('***' . substr($this->managerLogin, -2)),
+            'version' => $this->version,
+            'agent' => $this->agent,
+            'auth' => 'not-run',
+            'accessPing' => 'not-run',
+            'retcode' => null,
+            'error' => null,
+        ];
+
+        $this->cookieFile = sys_get_temp_dir() . '/mt5_diag_' . bin2hex(random_bytes(12)) . '.cookie';
+
+        try {
+            $this->init();
+            $this->auth($this->managerLogin, $this->managerPassword);
+            $result['auth'] = 'ok';
+
+            $resp = $this->requestNoAutoPing('GET', '/api/test/access');
+            $result['retcode'] = (string)($resp['retcode'] ?? '');
+            $result['accessPing'] = $this->retOk($resp) ? 'ok' : 'failed';
+            return $result;
+        } catch (\Throwable $e) {
+            $result['auth'] = $result['auth'] === 'ok' ? 'ok' : 'failed';
+            $result['accessPing'] = $result['accessPing'] === 'ok' ? 'ok' : 'failed';
+            $result['error'] = $e->getMessage();
+            return $result;
+        } finally {
+            try {
+                if ($this->ch) {
+                    $this->request('GET', '/api/quit');
+                }
+            } catch (\Throwable) {
+            }
+            $this->shutdown();
+            if ($this->cookieFile !== '' && is_file($this->cookieFile)) {
+                @unlink($this->cookieFile);
+            }
+        }
     }
 
     public function ping(): array|false
     {
-        return $this->withSession(fn(self $c) => $c->request('GET', '/api/ping'));
+        return $this->withSession(fn(self $c) => $c->request('GET', '/api/test/access'));
+    }
+
+    private function maybePing(): void
+    {
+        if (!$this->isAuthed) {
+            return;
+        }
+
+        $now = time();
+        if ($this->lastPingAt === 0) {
+            $this->lastPingAt = $now;
+            return;
+        }
+
+        if (($now - $this->lastPingAt) < 20) {
+            return;
+        }
+
+        $resp = $this->requestNoAutoPing('GET', '/api/test/access');
+        if (!$this->retOk($resp)) {
+            throw new RuntimeException('auto-ping failed: ' . json_encode($resp));
+        }
+
+        $this->lastPingAt = $now;
     }
 
     public function generateMt5Password(int $length = 12): string
     {
-        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-        $max = strlen($alphabet) - 1;
-        $out = '';
-        for ($i = 0; $i < $length; $i++) {
-            $out .= $alphabet[random_int(0, $max)];
+        $lower = 'abcdefghjkmnpqrstuvwxyz';
+        $upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+        $digits = '23456789';
+        $special = '#@!$%&*?';
+
+        $pick = static function (string $pool): string {
+            return $pool[random_int(0, strlen($pool) - 1)];
+        };
+
+        $password = [
+            $pick($lower),
+            $pick($upper),
+            $pick($digits),
+            $pick($special),
+        ];
+
+        $all = $lower . $upper . $digits . $special;
+        $targetLength = max(8, min(16, $length));
+
+        while (count($password) < $targetLength) {
+            $password[] = $pick($all);
         }
-        return $out;
+
+        for ($i = count($password) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$password[$i], $password[$j]] = [$password[$j], $password[$i]];
+        }
+
+        return implode('', $password);
     }
 
     public function callGet(string $path, array $queryParams = []): array|false
@@ -194,11 +441,21 @@ final class MT5WebApiClient
         if ($group === '' || $name === '' || $leverage < 1 || $passMain === '' || $passInvestor === '') {
             throw new RuntimeException('Missing required parameters for /api/user/add');
         }
-        $body = array_merge($optionalBody, ['PassMain' => $passMain, 'PassInvestor' => $passInvestor]);
-        if ($email !== null) {
+
+        $body = array_merge($optionalBody, [
+            'PassMain' => $passMain,
+            'PassInvestor' => $passInvestor,
+        ]);
+
+        if ($email !== null && $email !== '') {
             $body['Email'] = $email;
         }
-        return $this->callPost('/api/user/add', ['group' => $group, 'name' => $name, 'leverage' => $leverage], $body);
+
+        return $this->callPost('/api/user/add', [
+            'group' => $group,
+            'name' => $name,
+            'leverage' => $leverage,
+        ], $body);
     }
 
     public function checkPassword(int $login, string $password): array|false
@@ -206,6 +463,7 @@ final class MT5WebApiClient
         if ($login <= 0 || $password === '') {
             throw new RuntimeException('Missing required parameters for /api/user/check_password');
         }
+
         return $this->callPost('/api/user/check_password', ['login' => $login], ['Password' => $password]);
     }
 
@@ -214,6 +472,7 @@ final class MT5WebApiClient
         if ($login <= 0) {
             throw new RuntimeException('Missing required parameter login for /api/user/get');
         }
+
         return $this->callGet('/api/user/get', ['login' => $login]);
     }
 
@@ -222,6 +481,7 @@ final class MT5WebApiClient
         if ($login <= 0) {
             throw new RuntimeException('Missing required parameter login for /api/user/account/get');
         }
+
         return $this->callGet('/api/user/account/get', ['login' => $login]);
     }
 

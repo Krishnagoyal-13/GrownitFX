@@ -42,12 +42,108 @@ final class AuthController extends Controller
         Session::remove('flash_error');
     }
 
+    public function showCredentials(): void
+    {
+        if (!Session::get('mt5_connected')) {
+            Session::set('flash_error', 'Please complete registration first.');
+            $this->redirect('/portal/register');
+        }
+
+        $this->render('auth/credentials', [
+            'csrf' => Csrf::token(),
+            'error' => Session::get('flash_error'),
+        ]);
+        Session::remove('flash_error');
+    }
+
+    public function apiUserStart(): void
+    {
+        if (!Csrf::verify($_POST['_csrf'] ?? null)) {
+            $this->json(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+            return;
+        }
+
+        try {
+            $client = new MT5WebApiClient();
+            $start = $client->startManagerHandshake();
+
+            Session::set('mt5_handshake', [
+                'cookie_file' => (string)$start['cookie_file'],
+                'srv_rand' => (string)$start['srv_rand'],
+                'created_at' => time(),
+            ]);
+
+            $this->json(['ok' => true, 'step' => 'start', 'retcode' => (string)($start['retcode'] ?? '')]);
+        } catch (Throwable $e) {
+            $this->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function apiUserAccess(): void
+    {
+        if (!Csrf::verify($_POST['_csrf'] ?? null)) {
+            $this->json(['ok' => false, 'error' => 'Invalid CSRF token'], 419);
+            return;
+        }
+
+        $state = Session::get('mt5_handshake');
+        if (!is_array($state) || empty($state['cookie_file']) || empty($state['srv_rand'])) {
+            $this->json(['ok' => false, 'error' => 'Handshake state missing. Call /api/user/start first.'], 400);
+            return;
+        }
+
+        if ((int)($state['created_at'] ?? 0) < (time() - 300)) {
+            $this->cleanupHandshake((string)$state['cookie_file']);
+            $this->json(['ok' => false, 'error' => 'Handshake expired. Please retry register.'], 400);
+            return;
+        }
+
+        try {
+            $client = new MT5WebApiClient();
+            $resp = $client->completeManagerHandshake((string)$state['cookie_file'], (string)$state['srv_rand']);
+
+            Session::set('mt5_connected', true);
+            Session::remove('mt5_handshake');
+            $this->cleanupHandshake((string)$state['cookie_file']);
+
+            $this->json([
+                'ok' => true,
+                'connected' => true,
+                'retcode' => (string)($resp['retcode'] ?? ''),
+            ]);
+        } catch (Throwable $e) {
+            $this->cleanupHandshake((string)$state['cookie_file']);
+            Session::remove('mt5_handshake');
+            $this->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function apiUserGet(): void
+    {
+        $creds = Session::get('issued_credentials');
+        if (!is_array($creds) || empty($creds['loginId']) || !isset($creds['password'])) {
+            $this->json(['ok' => false, 'error' => 'Credentials not available yet. Complete registration first.'], 404);
+            return;
+        }
+
+        $this->json([
+            'ok' => true,
+            'loginId' => (string)$creds['loginId'],
+            'password' => (string)$creds['password'],
+        ]);
+    }
+
     public function register(): void
     {
         if (!Csrf::verify($_POST['_csrf'] ?? null)) {
             http_response_code(419);
             require dirname(__DIR__, 2) . '/views/errors/419.php';
             return;
+        }
+
+        if (!Session::get('mt5_connected')) {
+            Session::set('flash_error', 'Could not verify MT5 connection. Please try again.');
+            $this->redirect('/portal/register');
         }
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
@@ -103,10 +199,15 @@ final class AuthController extends Controller
                 $userId = (int)$existing['id'];
             }
 
+            Session::set('issued_credentials', [
+                'loginId' => (string)$mt5Login,
+                'password' => $password,
+            ]);
+
             Session::regenerate();
             Session::set('user_id', $userId);
             Session::set('mt5_login', $mt5Login);
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/credentials');
         } catch (Throwable) {
             $rateLimit->hit('register', $ip);
             Session::set('flash_error', 'Unable to create account at this time.');
@@ -189,5 +290,19 @@ final class AuthController extends Controller
 
         Session::destroy();
         $this->redirect('/portal/login');
+    }
+
+    private function json(array $payload, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function cleanupHandshake(string $cookieFile): void
+    {
+        if ($cookieFile !== '' && is_file($cookieFile)) {
+            @unlink($cookieFile);
+        }
     }
 }
