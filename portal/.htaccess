@@ -5,7 +5,12 @@
 <IfModule mod_rewrite.c>
 RewriteEngine On
 
-# If request is a real file/dir in /portal, serve it directly.
+# Support direct clean URLs like /portal/register even when directory
+# handling differs across servers.
+RewriteRule ^(login|register|dashboard)$ public/index.php?route=/$1 [QSA,L]
+RewriteRule ^logout$ public/index.php?route=/logout [QSA,L]
+
+# If request is a real file/dir in /portal, serve it (e.g. /portal/public/...)
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
