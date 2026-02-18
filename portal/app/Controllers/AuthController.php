@@ -166,12 +166,6 @@ final class AuthController extends Controller
             Session::remove('mt5_handshake');
             $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 500);
         }
-
-        $this->json([
-            'ok' => true,
-            'loginId' => (string)$creds['loginId'],
-            'password' => (string)$creds['password'],
-        ]);
     }
 
     public function register(): void
@@ -193,12 +187,6 @@ final class AuthController extends Controller
             'loginId' => (string)$creds['loginId'],
             'password' => (string)$creds['password'],
         ]);
-    }
-
-    public function register(): void
-    {
-        Session::set('flash_error', 'Use the new register flow button to create account.');
-        $this->redirect('/portal/register');
     }
 
     public function login(): void
@@ -276,48 +264,6 @@ final class AuthController extends Controller
 
         Session::destroy();
         $this->redirect('/portal/login/index.php');
-    }
-
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
-    }
-
-    private function json(array $payload, int $status = 200): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function cleanupHandshake(string $cookieFile): void
-    {
-        if ($cookieFile !== '' && is_file($cookieFile)) {
-            @unlink($cookieFile);
-        }
     }
 
     private function sendJson(array $payload, int $status = 200): void
