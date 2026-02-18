@@ -5,7 +5,39 @@ require __DIR__ . '/../app/bootstrap.php';
 
 use App\Core\Router;
 
-$router = new Router('/portal');
+function detectBasePath(): string
+{
+    $requestPath = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+    $requestPath = '/' . ltrim($requestPath, '/');
+
+    // Prefer deriving from REQUEST_URI so wrapper scripts like
+    // /PROJECT/portal/register/index.php still resolve base as /PROJECT/portal.
+    if (preg_match('#^(.*?/portal)(?:/.*)?$#', $requestPath, $matches) === 1) {
+        return rtrim($matches[1], '/');
+    }
+
+    $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+    $phpSelf = (string)($_SERVER['PHP_SELF'] ?? '');
+
+    $entryScript = $scriptName !== '' ? $scriptName : $phpSelf;
+    if ($entryScript === '') {
+        return '/portal';
+    }
+
+    $entryDir = rtrim(str_replace('\\', '/', dirname($entryScript)), '/');
+
+    if (str_ends_with($entryDir, '/public')) {
+        $entryDir = substr($entryDir, 0, -strlen('/public'));
+    }
+
+    $entryDir = '/' . ltrim($entryDir, '/');
+    return $entryDir === '/' ? '/portal' : rtrim($entryDir, '/');
+}
+
+
+$basePath = detectBasePath();
+$_ENV['APP_BASE_PATH'] = $basePath;
+$router = new Router($basePath);
 
 $router->get('/', 'AuthController@showLogin');
 $router->get('/login', 'AuthController@showLogin');
@@ -20,9 +52,22 @@ $router->get('/dashboard', 'DashboardController@index');
 
 $routeFromQuery = $_GET['route'] ?? null;
 if (is_string($routeFromQuery) && str_starts_with($routeFromQuery, '/')) {
-    $routePath = $routeFromQuery;
+    $rawPath = $routeFromQuery;
 } else {
-    $routePath = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+    $rawPath = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
 }
 
-$router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $routePath);
+$resolvedRoutePath = $router->resolvePath($rawPath);
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && $resolvedRoutePath === '/_debug') {
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode([
+        'REQUEST_URI' => (string)($_SERVER['REQUEST_URI'] ?? ''),
+        'SCRIPT_NAME' => (string)($_SERVER['SCRIPT_NAME'] ?? ''),
+        'detectedBasePath' => $basePath,
+        'resolvedRoutePath' => $resolvedRoutePath,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+$router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $rawPath);
