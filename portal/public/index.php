@@ -7,6 +7,15 @@ use App\Core\Router;
 
 function detectBasePath(): string
 {
+    $requestPath = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+    $requestPath = '/' . ltrim($requestPath, '/');
+
+    // Prefer deriving from REQUEST_URI so wrapper scripts like
+    // /PROJECT/portal/register/index.php still resolve base as /PROJECT/portal.
+    if (preg_match('#^(.*?/portal)(?:/.*)?$#', $requestPath, $matches) === 1) {
+        return rtrim($matches[1], '/');
+    }
+
     $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '');
     $phpSelf = (string)($_SERVER['PHP_SELF'] ?? '');
 
@@ -17,16 +26,17 @@ function detectBasePath(): string
 
     $entryDir = rtrim(str_replace('\\', '/', dirname($entryScript)), '/');
 
-    // Front controller lives in /portal/public, basePath should stop at /portal.
     if (str_ends_with($entryDir, '/public')) {
         $entryDir = substr($entryDir, 0, -strlen('/public'));
     }
 
     $entryDir = '/' . ltrim($entryDir, '/');
-    return $entryDir === '/' ? '' : rtrim($entryDir, '/');
+    return $entryDir === '/' ? '/portal' : rtrim($entryDir, '/');
 }
 
+
 $basePath = detectBasePath();
+$_ENV['APP_BASE_PATH'] = $basePath;
 $router = new Router($basePath);
 
 $router->get('/', 'AuthController@showLogin');

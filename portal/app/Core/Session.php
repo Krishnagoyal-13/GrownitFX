@@ -7,6 +7,12 @@ final class Session
 {
     private static function detectCookiePath(): string
     {
+        $requestPath = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+        $requestPath = '/' . ltrim($requestPath, '/');
+        if (preg_match('#^(.*?/portal)(?:/.*)?$#', $requestPath, $matches) === 1) {
+            return rtrim($matches[1], '/');
+        }
+
         $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '');
         $phpSelf = (string)($_SERVER['PHP_SELF'] ?? '');
         $entryScript = $scriptName !== '' ? $scriptName : $phpSelf;
@@ -21,7 +27,7 @@ final class Session
         }
 
         $entryDir = '/' . ltrim($entryDir, '/');
-        return $entryDir === '/' ? '/' : rtrim($entryDir, '/');
+        return $entryDir === '/' ? '/portal' : rtrim($entryDir, '/');
     }
 
     public static function start(): void

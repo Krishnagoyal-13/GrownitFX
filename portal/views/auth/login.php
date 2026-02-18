@@ -3,7 +3,7 @@
 <?php if (!empty($error)): ?>
   <div class="error"><?= htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') ?></div>
 <?php endif; ?>
-<form method="post" action="/portal/login/index.php" autocomplete="off">
+<form method="post" action="<?= htmlspecialchars((string)$basePath, ENT_QUOTES, 'UTF-8') ?>/login" autocomplete="off">
   <input type="hidden" name="_csrf" value="<?= htmlspecialchars((string)$csrf, ENT_QUOTES, 'UTF-8') ?>">
   <label for="mt5_login">MT5 Login</label>
   <input id="mt5_login" name="mt5_login" type="number" required min="1">
@@ -13,4 +13,4 @@
 
   <button type="submit">Login</button>
 </form>
-<p><a href="/portal/register/index.php">Create account</a></p>
+<p><a href="<?= htmlspecialchars((string)$basePath, ENT_QUOTES, 'UTF-8') ?>/register">Create account</a></p>
