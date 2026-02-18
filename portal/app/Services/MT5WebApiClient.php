@@ -21,18 +21,18 @@ final class MT5WebApiClient
 
     public function __construct()
     {
-        $server = trim((string)($_ENV['MT5_SERVER'] ?? ''));
-        if ($server === '') {
-            throw new RuntimeException('MT5_SERVER is not configured.');
-        }
-
+        $server = trim((string)($_ENV['MT5_SERVER'] ?? 'https://api.grownitfx.com'));
         if (!preg_match('#^https?://#i', $server)) {
             $server = 'https://' . $server;
         }
 
         $this->server = rtrim($server, '/');
-        $this->managerLogin = trim((string)($_ENV['MT5_MANAGER_LOGIN'] ?? ''));
+        $this->managerLogin = trim((string)($_ENV['MT5_MANAGER_LOGIN'] ?? '10539'));
         $this->managerPassword = (string)($_ENV['MT5_MANAGER_PASSWORD'] ?? '');
+        if ($this->managerPassword === '') {
+            throw new RuntimeException('MT5_MANAGER_PASSWORD is not configured.');
+        }
+
         $this->version = (int)($_ENV['MT5_VERSION'] ?? 484);
         $this->agent = trim((string)($_ENV['MT5_AGENT'] ?? 'test'));
         $this->debug = ((int)($_ENV['MT5_DEBUG'] ?? 0) === 1);

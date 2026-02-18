@@ -69,8 +69,8 @@
         throw new Error(accessJson.error || 'MT5 access handshake failed.');
       }
 
-      btn.textContent = 'Creating account...';
-      form.submit();
+      btn.textContent = 'Connected';
+      window.location.href = `${basePath}/credentials`;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Registration failed.');
       btn.disabled = false;
