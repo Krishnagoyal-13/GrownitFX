@@ -17,7 +17,7 @@ final class AuthController extends Controller
     public function showLogin(): void
     {
         if (Session::get('mt5_login')) {
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/dashboard/index.php');
         }
 
         $this->render('auth/login', [
@@ -30,7 +30,7 @@ final class AuthController extends Controller
     public function showRegister(): void
     {
         if (Session::get('mt5_login')) {
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/dashboard/index.php');
         }
 
         $this->render('auth/register', [
@@ -204,7 +204,7 @@ final class AuthController extends Controller
         $rateLimit = new RateLimitModel();
         if ($rateLimit->tooManyAttempts('login', $ip, 10, 15, $identity)) {
             Session::set('flash_error', 'Invalid credentials.');
-            $this->redirect('/portal/login');
+            $this->redirect('/portal/login/index.php');
         }
 
         $mt5Login = (int)$loginInput;
@@ -213,7 +213,7 @@ final class AuthController extends Controller
         if ($mt5Login <= 0 || !Validator::password($password)) {
             $rateLimit->hit('login', $ip, $identity);
             Session::set('flash_error', 'Invalid credentials.');
-            $this->redirect('/portal/login');
+            $this->redirect('/portal/login/index.php');
         }
 
         $client = new MT5WebApiClient();
@@ -246,11 +246,11 @@ final class AuthController extends Controller
             Session::regenerate();
             Session::set('user_id', $userId);
             Session::set('mt5_login', $mt5Login);
-            $this->redirect('/portal/dashboard');
+            $this->redirect('/portal/dashboard/index.php');
         } catch (Throwable) {
             $rateLimit->hit('login', $ip, $identity);
             Session::set('flash_error', 'Invalid credentials.');
-            $this->redirect('/portal/login');
+            $this->redirect('/portal/login/index.php');
         }
     }
 
@@ -263,7 +263,35 @@ final class AuthController extends Controller
         }
 
         Session::destroy();
-        $this->redirect('/portal/login');
+        $this->redirect('/portal/login/index.php');
+    }
+
+    private function json(array $payload, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function cleanupHandshake(string $cookieFile): void
+    {
+        if ($cookieFile !== '' && is_file($cookieFile)) {
+            @unlink($cookieFile);
+        }
+    }
+
+    private function json(array $payload, int $status = 200): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function cleanupHandshake(string $cookieFile): void
+    {
+        if ($cookieFile !== '' && is_file($cookieFile)) {
+            @unlink($cookieFile);
+        }
     }
 
     private function json(array $payload, int $status = 200): void
