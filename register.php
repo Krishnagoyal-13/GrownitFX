@@ -30,9 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Please provide a valid email address.';
     }
 
-    $validPassword = preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,16}$/', $password) === 1;
+    $validPassword = preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,16}$/', $password) === 1;
     if (!$validPassword) {
-        $errors[] = 'Password must be 8-16 chars with lowercase, uppercase, number, and special character.';
+        $errors[] = 'Password must be 8-16 chars with lowercase, uppercase, and number (letters and digits only).';
     }
 
     if ($errors === []) {
@@ -54,8 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $retcode = (string)($addResponse['retcode'] ?? '');
                     $mt5LoginId = (string)($addResponse['answer']['Login'] ?? '');
 
-                    if (!str_starts_with($retcode, '0') || $mt5LoginId === '') {
-                        $errors[] = 'MT5 registration failed. Please try again.';
+                    if (!str_starts_with($retcode, '0')) {
+                        $errors[] = sprintf('MT5 /api/user/add failed. retcode=%s response=%s', $retcode, json_encode($addResponse));
+                    } elseif ($mt5LoginId === '') {
+                        $errors[] = sprintf('MT5 /api/user/add failed. Missing answer.Login response=%s', json_encode($addResponse));
                     } else {
                         $repository->create($name, $country, $email, password_hash($password, PASSWORD_DEFAULT), $mt5LoginId);
 
