@@ -30,9 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Please provide a valid email address.';
     }
 
-    $validPassword = preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,16}$/', $password) === 1;
+    $validPassword = preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s])\S{8,16}$/', $password) === 1;
     if (!$validPassword) {
-        $errors[] = 'Password must be 8-16 chars with lowercase, uppercase, and number (letters and digits only).';
+        $errors[] = 'Password must be 8-16 chars and include lowercase, uppercase, number, and special character.';
     }
 
     if ($errors === []) {
