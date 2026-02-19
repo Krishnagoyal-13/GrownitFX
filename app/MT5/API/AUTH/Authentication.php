@@ -23,8 +23,9 @@ final class Authentication
         ]);
 
         $srvRand = (string)($start['srv_rand'] ?? '');
+        $startRetcode = (string)($start['retcode'] ?? '');
         if (!$this->retOk($start) || $srvRand === '') {
-            throw new RuntimeException('MT5 auth/start failed.');
+            throw new RuntimeException(sprintf('MT5 auth/start failed. retcode=%s response=%s', $startRetcode, json_encode($start)));
         }
 
         $passHashRaw = Hash::passHashRaw(MT5_MANAGER_PASSWORD);
@@ -38,11 +39,12 @@ final class Authentication
             'cli_rand' => $cliRandHex,
         ]);
 
+        $answerRetcode = (string)($answer['retcode'] ?? '');
         $serverAnswer = (string)($answer['cli_rand_answer'] ?? '');
         $expected = md5($passHashRaw . $cliRandBin);
 
         if (!$this->retOk($answer) || $serverAnswer === '' || !hash_equals($expected, $serverAnswer)) {
-            throw new RuntimeException('MT5 auth/answer validation failed.');
+            throw new RuntimeException(sprintf('MT5 auth/answer validation failed. retcode=%s response=%s', $answerRetcode, json_encode($answer)));
         }
     }
 
