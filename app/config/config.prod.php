@@ -13,6 +13,6 @@ const MT5_MANAGER_LOGIN = 'YOUR_MANAGER_LOGIN';
 const MT5_MANAGER_PASSWORD = 'YOUR_MANAGER_PASSWORD';
 const MT5_VERSION = 484;
 const MT5_AGENT = 'test';
-const MT5_GROUP = 'demo\\Grownit';
+const MT5_GROUP = 'demo\\forex-hedge-usd-01';
 const MT5_LEVERAGE = 100;
 const MT5_COOKIE_DIR = __DIR__ . '/../../storage/mt5cookies';

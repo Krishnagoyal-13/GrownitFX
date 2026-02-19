@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $retcode = (string)($checkResponse['retcode'] ?? '');
 
                     if (!str_starts_with($retcode, '0')) {
-                        $errors[] = 'MT5 password verification failed.';
+                        $errors[] = sprintf('MT5 /api/user/check_password failed. retcode=%s response=%s', $retcode, json_encode($checkResponse));
                     } else {
                         $_SESSION['user_email'] = (string)$user['email'];
                         $_SESSION['user_login_id'] = (string)$user['mt5_login_id'];
