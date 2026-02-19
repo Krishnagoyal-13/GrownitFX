@@ -21,6 +21,16 @@ final class UserRepository
         return is_array($user) ? $user : null;
     }
 
+
+    public function findByMt5LoginId(string $mt5LoginId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT id, name, country, email, password_hash, mt5_login_id FROM users WHERE mt5_login_id = :mt5_login_id LIMIT 1');
+        $stmt->execute(['mt5_login_id' => $mt5LoginId]);
+        $user = $stmt->fetch();
+
+        return is_array($user) ? $user : null;
+    }
+
     public function create(string $name, string $country, string $email, string $passwordHash, string $mt5LoginId): void
     {
         $stmt = $this->db->prepare('INSERT INTO users (name, country, email, password_hash, mt5_login_id) VALUES (:name, :country, :email, :password_hash, :mt5_login_id)');
