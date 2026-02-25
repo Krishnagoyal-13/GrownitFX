@@ -204,16 +204,18 @@ $essentialFields = [
                 throw new Error('Server returned non-JSON response (HTTP ' + response.status + '). ' + snippet);
             }
 
+            const replyText = payload && payload.server_replied ? ' | server_reply=YES' : ' | server_reply=NO';
+
             if (!response.ok || !payload.ok) {
                 const retcodeText = payload && payload.retcode ? (' | retcode=' + payload.retcode) : '';
                 const detailText = payload && payload.details ? (' | ' + payload.details) : '';
-                setStatus('Apply failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + detailText, 'error');
+                setStatus('Apply failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + replyText + detailText, 'error');
                 return;
             }
 
             const ticketText = payload.ticket ? (', ticket=' + payload.ticket) : '';
             const retcodeText = payload.retcode ? (', retcode=' + payload.retcode) : '';
-            setStatus('MT5 request processed. tx_id=' + payload.tx_id + ', status=' + payload.status + ticketText + retcodeText, 'success');
+            setStatus('MT5 request processed. tx_id=' + payload.tx_id + ', status=' + payload.status + ticketText + retcodeText + replyText, 'success');
         } catch (error) {
             setStatus(error.message || 'Unknown request error.', 'error');
         } finally {

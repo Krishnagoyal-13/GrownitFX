@@ -89,6 +89,9 @@ try {
         'ticket' => $mt5Result['ticket'] ?? null,
         'retcode' => $retcode,
         'details' => $mt5Result['raw'] ?? null,
+        'http_code' => $mt5Result['http_code'] ?? null,
+        'server_replied' => (bool)($mt5Result['server_replied'] ?? false),
+        'request_url' => $mt5Result['request_url'] ?? null,
         'error' => $error,
     ]);
 } catch (Throwable $e) {

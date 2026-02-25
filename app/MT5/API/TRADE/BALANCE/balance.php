@@ -45,12 +45,26 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
     curl_close($curl);
 
     if ($responseBody === false) {
-        return ['ok' => false, 'error' => 'MT5 call failed', 'details' => $curlErr];
+        return [
+            'ok' => false,
+            'error' => 'MT5 call failed',
+            'details' => $curlErr,
+            'http_code' => $httpCode,
+            'server_replied' => $httpCode > 0,
+            'request_url' => $url,
+        ];
     }
 
     $decoded = json_decode($responseBody, true);
     if (!is_array($decoded)) {
-        return ['ok' => false, 'error' => 'Invalid MT5 JSON response', 'details' => $responseBody];
+        return [
+            'ok' => false,
+            'error' => 'Invalid MT5 JSON response',
+            'details' => $responseBody,
+            'http_code' => $httpCode,
+            'server_replied' => $httpCode > 0,
+            'request_url' => $url,
+        ];
     }
 
     $retcode = (string)($decoded['retcode'] ?? '');
@@ -62,6 +76,8 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
         'ticket' => $ticket,
         'answer' => $decoded['answer'] ?? null,
         'http_code' => $httpCode,
+        'server_replied' => $httpCode > 0,
+        'request_url' => $url,
         'raw' => $decoded,
     ];
 }
