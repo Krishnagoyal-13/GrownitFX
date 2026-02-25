@@ -206,16 +206,18 @@ $essentialFields = [
 
             const replyText = payload && payload.server_replied ? ' | server_reply=YES' : ' | server_reply=NO';
 
+            const mt5ResponseText = payload && payload.mt5_response ? (' | mt5_response=' + JSON.stringify(payload.mt5_response)) : '';
+
             if (!response.ok || !payload.ok) {
                 const retcodeText = payload && payload.retcode ? (' | retcode=' + payload.retcode) : '';
-                const detailText = payload && payload.details ? (' | ' + payload.details) : '';
-                setStatus('Apply failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + replyText + detailText, 'error');
+                const detailText = payload && payload.details ? (' | ' + (typeof payload.details === 'string' ? payload.details : JSON.stringify(payload.details))) : '';
+                setStatus('Apply failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + replyText + detailText + mt5ResponseText, 'error');
                 return;
             }
 
             const ticketText = payload.ticket ? (', ticket=' + payload.ticket) : '';
             const retcodeText = payload.retcode ? (', retcode=' + payload.retcode) : '';
-            setStatus('MT5 request processed. tx_id=' + payload.tx_id + ', status=' + payload.status + ticketText + retcodeText + replyText, 'success');
+            setStatus('MT5 request processed. tx_id=' + payload.tx_id + ', status=' + payload.status + ticketText + retcodeText + replyText + mt5ResponseText, 'success');
         } catch (error) {
             setStatus(error.message || 'Unknown request error.', 'error');
         } finally {

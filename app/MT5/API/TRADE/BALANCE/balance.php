@@ -52,6 +52,7 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
             'http_code' => $httpCode,
             'server_replied' => $httpCode > 0,
             'request_url' => $url,
+            'raw_response_text' => null,
         ];
     }
 
@@ -64,6 +65,7 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
             'http_code' => $httpCode,
             'server_replied' => $httpCode > 0,
             'request_url' => $url,
+            'raw_response_text' => null,
         ];
     }
 
@@ -78,6 +80,7 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
         'http_code' => $httpCode,
         'server_replied' => $httpCode > 0,
         'request_url' => $url,
+        'raw_response_text' => (string)$responseBody,
         'raw' => $decoded,
     ];
 }
