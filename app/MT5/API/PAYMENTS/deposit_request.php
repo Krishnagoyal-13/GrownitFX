@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 session_start();
 
 require_once __DIR__ . '/../../../db/db.php';
+require_once __DIR__ . '/../TRADE/BALANCE/balance.php';
 
 try {
     ensure_payment_transactions_table();
@@ -43,8 +44,9 @@ try {
 
     $txId = 'D' . substr(bin2hex(random_bytes(6)), 0, 12);
 
-    $stmt = db()->prepare('INSERT INTO payment_transactions (tx_id, login, type, amount, status) VALUES (:tx_id, :login, :type, :amount, :status)');
-    $stmt->execute([
+    $pdo = db();
+    $insert = $pdo->prepare('INSERT INTO payment_transactions (tx_id, login, type, amount, status) VALUES (:tx_id, :login, :type, :amount, :status)');
+    $insert->execute([
         ':tx_id' => $txId,
         ':login' => (int)$login,
         ':type' => 'deposit',
@@ -52,8 +54,29 @@ try {
         ':status' => 'pending',
     ]);
 
-    http_response_code(200);
-    echo json_encode(['ok' => true, 'tx_id' => $txId, 'status' => 'pending']);
+    $comment = mb_substr('DEP:' . $txId, 0, 32);
+    $mt5Result = mt5_trade_balance((int)$login, 2, number_format($amount, 2, '.', ''), $comment);
+
+    $newStatus = $mt5Result['ok'] ? 'applied' : 'failed';
+    $update = $pdo->prepare('UPDATE payment_transactions SET status = :status, mt5_ticket = :ticket, retcode = :retcode, details_json = :details WHERE tx_id = :tx_id');
+    $update->execute([
+        ':status' => $newStatus,
+        ':ticket' => $mt5Result['ticket'] ?? null,
+        ':retcode' => $mt5Result['retcode'] ?? null,
+        ':details' => json_encode($mt5Result['raw'] ?? $mt5Result),
+        ':tx_id' => $txId,
+    ]);
+
+    http_response_code($mt5Result['ok'] ? 200 : 500);
+    echo json_encode([
+        'ok' => (bool)$mt5Result['ok'],
+        'tx_id' => $txId,
+        'status' => $newStatus,
+        'ticket' => $mt5Result['ticket'] ?? null,
+        'retcode' => $mt5Result['retcode'] ?? null,
+        'details' => $mt5Result['raw'] ?? null,
+        'error' => $mt5Result['ok'] ? null : 'MT5 deposit apply failed',
+    ]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error', 'details' => $e->getMessage()]);

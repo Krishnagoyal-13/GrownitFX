@@ -210,7 +210,9 @@ $essentialFields = [
                 return;
             }
 
-            setStatus('Request created successfully. tx_id=' + payload.tx_id + ', status=' + payload.status, 'success');
+            const ticketText = payload.ticket ? (', ticket=' + payload.ticket) : '';
+            const retcodeText = payload.retcode ? (', retcode=' + payload.retcode) : '';
+            setStatus('MT5 request processed. tx_id=' + payload.tx_id + ', status=' + payload.status + ticketText + retcodeText, 'success');
         } catch (error) {
             setStatus(error.message || 'Unknown request error.', 'error');
         } finally {

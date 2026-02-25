@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 session_start();
 
 require_once __DIR__ . '/../../../db/db.php';
+require_once __DIR__ . '/../TRADE/BALANCE/balance.php';
 
 try {
     ensure_payment_transactions_table();
@@ -43,8 +44,9 @@ try {
 
     $txId = 'W' . substr(bin2hex(random_bytes(6)), 0, 12);
 
-    $stmt = db()->prepare('INSERT INTO payment_transactions (tx_id, login, type, amount, status) VALUES (:tx_id, :login, :type, :amount, :status)');
-    $stmt->execute([
+    $pdo = db();
+    $insert = $pdo->prepare('INSERT INTO payment_transactions (tx_id, login, type, amount, status) VALUES (:tx_id, :login, :type, :amount, :status)');
+    $insert->execute([
         ':tx_id' => $txId,
         ':login' => (int)$login,
         ':type' => 'withdraw',
@@ -52,8 +54,43 @@ try {
         ':status' => 'pending',
     ]);
 
-    http_response_code(200);
-    echo json_encode(['ok' => true, 'tx_id' => $txId, 'status' => 'pending']);
+    $comment = mb_substr('WDR:' . $txId, 0, 32);
+    $mt5Result = mt5_trade_balance((int)$login, 4, number_format(-1 * abs($amount), 2, '.', ''), $comment, 1);
+
+    $newStatus = $mt5Result['ok'] ? 'applied' : 'failed';
+    $retcode = (string)($mt5Result['retcode'] ?? '');
+    $error = null;
+    if (!$mt5Result['ok']) {
+        if (strpos($retcode, '10019') !== false) {
+            $error = 'Withdrawal exceeds free margin or current balance';
+        } elseif (strpos($retcode, '4005') !== false) {
+            $error = 'Withdrawal amount too large';
+        } elseif (preg_match('/(^|\s)3(\s|$)/', $retcode) === 1) {
+            $error = 'Incorrect MT5 deal type';
+        } else {
+            $error = 'MT5 withdraw apply failed';
+        }
+    }
+
+    $update = $pdo->prepare('UPDATE payment_transactions SET status = :status, mt5_ticket = :ticket, retcode = :retcode, details_json = :details WHERE tx_id = :tx_id');
+    $update->execute([
+        ':status' => $newStatus,
+        ':ticket' => $mt5Result['ticket'] ?? null,
+        ':retcode' => $retcode,
+        ':details' => json_encode($mt5Result['raw'] ?? $mt5Result),
+        ':tx_id' => $txId,
+    ]);
+
+    http_response_code($mt5Result['ok'] ? 200 : 500);
+    echo json_encode([
+        'ok' => (bool)$mt5Result['ok'],
+        'tx_id' => $txId,
+        'status' => $newStatus,
+        'ticket' => $mt5Result['ticket'] ?? null,
+        'retcode' => $retcode,
+        'details' => $mt5Result['raw'] ?? null,
+        'error' => $error,
+    ]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Server error', 'details' => $e->getMessage()]);
