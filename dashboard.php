@@ -205,7 +205,8 @@ $essentialFields = [
             }
 
             if (!response.ok || !payload.ok) {
-                setStatus('Request failed: ' + (payload.error || ('HTTP ' + response.status)), 'error');
+                const detailText = payload && payload.details ? (' | ' + payload.details) : '';
+                setStatus('Request failed: ' + (payload.error || ('HTTP ' + response.status)) + detailText, 'error');
                 return;
             }
 

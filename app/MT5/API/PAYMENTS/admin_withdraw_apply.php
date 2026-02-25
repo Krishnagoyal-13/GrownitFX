@@ -35,6 +35,7 @@ function assert_admin_access(array $cfg): void
 }
 
 try {
+    ensure_payment_transactions_table();
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(404);
         echo json_encode(['ok' => false, 'error' => 'Not found']);
