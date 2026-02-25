@@ -50,6 +50,33 @@ function mt5_trade_balance_call(string $baseUrl, string $cookiePath, array $quer
     $responseBody = curl_exec($curl);
     $curlErr = curl_error($curl);
     $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+    $isTransientTlsEof = $responseBody === false
+        && $curlErr !== ''
+        && (stripos($curlErr, 'SSL_read') !== false || stripos($curlErr, 'unexpected eof while reading') !== false);
+
+    if ($isTransientTlsEof) {
+        curl_setopt_array($curl, [
+            CURLOPT_FORBID_REUSE => true,
+            CURLOPT_FRESH_CONNECT => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Connection: close',
+                'User-Agent: ' . (defined('MT5_AGENT') ? (string) MT5_AGENT : 'agent'),
+            ],
+        ]);
+
+        $retryBody = curl_exec($curl);
+        $retryErr = curl_error($curl);
+        $retryCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+        if ($retryBody !== false || $retryCode > 0) {
+            $responseBody = $retryBody;
+            $curlErr = $retryErr;
+            $httpCode = $retryCode;
+        }
+    }
+
     curl_close($curl);
 
     return [
@@ -103,7 +130,7 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
         return [
             'ok' => false,
             'error' => 'MT5 call failed',
-            'details' => trim(((string) ($final['curl_error'] ?? '')) . ' | method=' . (string) ($final['method'] ?? '') . ' | url=' . (string) ($final['request_url'] ?? '')),
+            'details' => (string) ($final['curl_error'] ?? ''),
             'http_code' => $httpCode,
             'server_replied' => $httpCode > 0,
             'request_url' => $final['request_url'] ?? null,
