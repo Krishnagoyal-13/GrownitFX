@@ -79,6 +79,10 @@ $essentialFields = [
         .kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 18px; }
         .kv-item { border: 1px solid #edf0f4; border-radius: 8px; padding: 10px 12px; background: #fbfcfe; }
         .kv-item strong { display: block; font-size: 12px; color: #667085; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+        .wallet { margin-top: 24px; border-top: 1px solid #edf0f4; padding-top: 20px; }
+        .wallet-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin: 10px 0; max-width: 420px; }
+        .wallet-row input { border: 1px solid #d0d8e2; border-radius: 6px; padding: 10px; }
+        .wallet-status { margin-top: 12px; font-size: 14px; color: #233142; }
     </style>
 </head>
 <body class="dashboard-page">
@@ -108,7 +112,60 @@ $essentialFields = [
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+
+        <section class="wallet">
+            <h2>Wallet</h2>
+            <p class="meta">Create deposit/withdraw requests. Admin applies MT5 balance operations separately.</p>
+
+            <div class="wallet-row">
+                <input type="number" step="0.01" min="0.01" id="depositAmount" placeholder="Deposit amount">
+                <button type="button" class="btn btn-primary" id="depositBtn">Request Deposit</button>
+            </div>
+
+            <div class="wallet-row">
+                <input type="number" step="0.01" min="0.01" id="withdrawAmount" placeholder="Withdraw amount">
+                <button type="button" class="btn btn-primary" id="withdrawBtn">Request Withdraw</button>
+            </div>
+
+            <div class="wallet-status" id="walletStatus">No request submitted yet.</div>
+        </section>
     </div>
 </div>
+<script>
+async function submitWalletRequest(url, amount) {
+    const statusBox = document.getElementById('walletStatus');
+    statusBox.textContent = 'Submitting...';
+
+    try {
+        const body = new URLSearchParams();
+        body.set('amount', amount);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+            statusBox.textContent = 'Error: ' + (payload.error || 'Request failed');
+            return;
+        }
+
+        statusBox.textContent = 'Request created. tx_id=' + payload.tx_id + ', status=' + payload.status;
+    } catch (error) {
+        statusBox.textContent = 'Error: ' + error.message;
+    }
+}
+
+document.getElementById('depositBtn').addEventListener('click', function () {
+    const amount = document.getElementById('depositAmount').value;
+    submitWalletRequest('/app/MT5/API/PAYMENTS/deposit_request.php', amount);
+});
+
+document.getElementById('withdrawBtn').addEventListener('click', function () {
+    const amount = document.getElementById('withdrawAmount').value;
+    submitWalletRequest('/app/MT5/API/PAYMENTS/withdraw_request.php', amount);
+});
+</script>
 </body>
 </html>
