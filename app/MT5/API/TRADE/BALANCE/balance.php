@@ -5,6 +5,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../AUTH/ensure_manager.php';
 require_once __DIR__ . '/../../../../config/mt5.php';
 
+const MT5_DEAL_BALANCE = 2;
+const MT5_DEAL_CHARGE = 4;
+
 function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = null): array
 {
     $cfg = mt5_config();
