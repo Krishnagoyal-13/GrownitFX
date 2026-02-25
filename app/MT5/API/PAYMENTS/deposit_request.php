@@ -74,12 +74,44 @@ try {
 
     http_response_code($mt5Result['ok'] ? 200 : 500);
     $retcode = (string)($mt5Result['retcode'] ?? '');
+    $httpCode = (int)($mt5Result['http_code'] ?? 0);
+    $requestMethod = (string)($mt5Result['request_method'] ?? '');
+    $requestUrl = (string)($mt5Result['request_url'] ?? '');
+    $rawResponseText = (string)($mt5Result['raw_response_text'] ?? '');
+    $transportDetails = $mt5Result['details'] ?? null;
+
+    $detailsPayload = $mt5Result['raw'] ?? $transportDetails;
+
     $error = null;
     if (!$mt5Result['ok']) {
-        $mt5Error = (string)($mt5Result['error'] ?? '');
-        $error = $retcode !== ''
-            ? ('MT5 deposit apply failed. retcode=' . $retcode)
-            : ('MT5 deposit apply failed' . ($mt5Error !== '' ? ('. ' . $mt5Error) : ''));
+        $parts = [];
+        if ($retcode !== '') {
+            $parts[] = 'retcode=' . $retcode;
+        }
+        if ($httpCode > 0) {
+            $parts[] = 'http=' . $httpCode;
+        }
+        if ($requestMethod !== '') {
+            $parts[] = 'method=' . $requestMethod;
+        }
+        if ($requestUrl !== '') {
+            $parts[] = 'url=' . $requestUrl;
+        }
+
+        $mt5Error = trim((string)($mt5Result['error'] ?? ''));
+        if ($mt5Error !== '') {
+            $parts[] = 'reason=' . $mt5Error;
+        }
+
+        if (is_string($transportDetails) && trim($transportDetails) !== '') {
+            $parts[] = 'details=' . trim($transportDetails);
+        }
+
+        if ($rawResponseText !== '') {
+            $parts[] = 'raw=' . mb_substr($rawResponseText, 0, 500);
+        }
+
+        $error = 'MT5 deposit apply failed' . ($parts !== [] ? ('. ' . implode(' | ', $parts)) : '');
     }
 
     echo json_encode([
@@ -88,10 +120,11 @@ try {
         'status' => $newStatus,
         'ticket' => $mt5Result['ticket'] ?? null,
         'retcode' => $retcode !== '' ? $retcode : null,
-        'details' => $mt5Result['raw'] ?? null,
+        'details' => $detailsPayload,
         'http_code' => $mt5Result['http_code'] ?? null,
         'server_replied' => (bool)($mt5Result['server_replied'] ?? false),
         'request_url' => $mt5Result['request_url'] ?? null,
+        'request_method' => $mt5Result['request_method'] ?? null,
         'mt5_response' => $mt5Result['raw'] ?? null,
         'mt5_raw_response_text' => $mt5Result['raw_response_text'] ?? null,
         'error' => $error,
