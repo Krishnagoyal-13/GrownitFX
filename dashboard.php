@@ -127,24 +127,24 @@ $essentialFields = [
 
         <section class="wallet">
             <h2>Wallet</h2>
-            <p class="meta">Create deposit/withdraw requests only. MT5 balance operations are applied by admin endpoints.</p>
+            <p class="meta">Create deposit or withdraw and apply directly on MT5.</p>
 
             <div class="wallet-grid">
                 <div class="wallet-card">
-                    <h3>Deposit Request</h3>
-                    <p>Submit a positive amount and receive a pending transaction ID.</p>
+                    <h3>Deposit</h3>
+                    <p>Submit a positive amount to credit your MT5 balance.</p>
                     <div class="wallet-row">
                         <input type="number" step="0.01" min="0.01" id="depositAmount" placeholder="Enter deposit amount" inputmode="decimal">
-                        <button type="button" class="btn-deposit" id="depositBtn">Request</button>
+                        <button type="button" class="btn-deposit" id="depositBtn">Apply</button>
                     </div>
                 </div>
 
                 <div class="wallet-card">
-                    <h3>Withdraw Request</h3>
-                    <p>Submit a positive amount to create a withdrawal approval request.</p>
+                    <h3>Withdraw</h3>
+                    <p>Submit a positive amount to debit your MT5 balance (with margin check).</p>
                     <div class="wallet-row">
                         <input type="number" step="0.01" min="0.01" id="withdrawAmount" placeholder="Enter withdrawal amount" inputmode="decimal">
-                        <button type="button" class="btn-withdraw" id="withdrawBtn">Request</button>
+                        <button type="button" class="btn-withdraw" id="withdrawBtn">Apply</button>
                     </div>
                 </div>
             </div>
@@ -169,7 +169,7 @@ $essentialFields = [
         }
     }
 
-    async function submitWalletRequest(url, amount, clickedBtn) {
+    async function submitWalletApply(url, amount, clickedBtn) {
         const parsed = Number(amount);
         if (!Number.isFinite(parsed) || parsed <= 0) {
             setStatus('Please enter a valid amount greater than 0.', 'error');
@@ -207,7 +207,7 @@ $essentialFields = [
             if (!response.ok || !payload.ok) {
                 const retcodeText = payload && payload.retcode ? (' | retcode=' + payload.retcode) : '';
                 const detailText = payload && payload.details ? (' | ' + payload.details) : '';
-                setStatus('Request failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + detailText, 'error');
+                setStatus('Apply failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + detailText, 'error');
                 return;
             }
 
@@ -226,11 +226,11 @@ $essentialFields = [
     }
 
     depositBtn.addEventListener('click', function () {
-        submitWalletRequest('app/MT5/API/PAYMENTS/deposit_request.php', document.getElementById('depositAmount').value, depositBtn);
+        submitWalletApply('app/MT5/API/PAYMENTS/deposit_request.php', document.getElementById('depositAmount').value, depositBtn);
     });
 
     withdrawBtn.addEventListener('click', function () {
-        submitWalletRequest('app/MT5/API/PAYMENTS/withdraw_request.php', document.getElementById('withdrawAmount').value, withdrawBtn);
+        submitWalletApply('app/MT5/API/PAYMENTS/withdraw_request.php', document.getElementById('withdrawAmount').value, withdrawBtn);
     });
 })();
 </script>
