@@ -83,10 +83,19 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
     ];
 
     if (($attempts[0]['http_code'] ?? 0) === 403) {
-        $attempts[] = mt5_trade_balance_call((string) $cfg['base_url'], $cookiePath, $query, 'POST');
-    }
+        $postAttempt = mt5_trade_balance_call((string) $cfg['base_url'], $cookiePath, $query, 'POST');
+        $attempts[] = $postAttempt;
 
-    $final = $attempts[count($attempts) - 1];
+        // If POST fallback fails at transport level, keep the original GET response
+        // so callers still receive the actual 403 body instead of a generic cURL error.
+        if (($postAttempt['body'] ?? false) === false) {
+            $final = $attempts[0];
+        } else {
+            $final = $postAttempt;
+        }
+    } else {
+        $final = $attempts[0];
+    }
     $responseBody = $final['body'];
     $httpCode = (int) ($final['http_code'] ?? 0);
 
@@ -94,7 +103,7 @@ function mt5_trade_balance($login, $type, $balance, $comment, $check_margin = nu
         return [
             'ok' => false,
             'error' => 'MT5 call failed',
-            'details' => (string) ($final['curl_error'] ?? ''),
+            'details' => trim(((string) ($final['curl_error'] ?? '')) . ' | method=' . (string) ($final['method'] ?? '') . ' | url=' . (string) ($final['request_url'] ?? '')),
             'http_code' => $httpCode,
             'server_replied' => $httpCode > 0,
             'request_url' => $final['request_url'] ?? null,
