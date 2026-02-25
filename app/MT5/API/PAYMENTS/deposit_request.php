@@ -69,7 +69,13 @@ try {
 
     http_response_code($mt5Result['ok'] ? 200 : 500);
     $retcode = (string)($mt5Result['retcode'] ?? '');
-    $error = $mt5Result['ok'] ? null : ('MT5 deposit apply failed. retcode=' . ($retcode !== '' ? $retcode : 'unknown'));
+    $error = null;
+    if (!$mt5Result['ok']) {
+        $mt5Error = (string)($mt5Result['error'] ?? '');
+        $error = $retcode !== ''
+            ? ('MT5 deposit apply failed. retcode=' . $retcode)
+            : ('MT5 deposit apply failed' . ($mt5Error !== '' ? ('. ' . $mt5Error) : ''));
+    }
 
     echo json_encode([
         'ok' => (bool)$mt5Result['ok'],
