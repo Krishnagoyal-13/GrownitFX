@@ -8,3 +8,20 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^portal/.*$ portal/public/index.php [L,QSA]
 </IfModule>
+
+# --- Security hardening for MT5 payment feature ---
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# Block direct access to sensitive directories.
+RewriteRule ^storage/ - [F,L,NC]
+RewriteRule ^app/config/ - [F,L,NC]
+RewriteRule ^app/db/ - [F,L,NC]
+
+# Restrict direct access to MT5 API PHP scripts: allow only PAYMENTS endpoints.
+RewriteCond %{REQUEST_URI} ^/app/MT5/API/ [NC]
+RewriteCond %{REQUEST_URI} !^/app/MT5/API/PAYMENTS/[A-Za-z0-9_\-]+\.php$ [NC]
+RewriteRule ^app/MT5/API/ - [F,L]
+</IfModule>
