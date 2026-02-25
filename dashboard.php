@@ -92,7 +92,7 @@ $essentialFields = [
         .wallet-row button:disabled { opacity: .65; cursor: not-allowed; }
         .btn-deposit { background: #16a34a; }
         .btn-withdraw { background: #2563eb; }
-        .wallet-status { margin-top: 14px; border-radius: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 14px; }
+        .wallet-status { margin-top: 14px; border-radius: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 14px; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .wallet-status.is-error { background: #fff1f2; border-color: #fecdd3; color: #9f1239; }
         .wallet-status.is-success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
     </style>
@@ -204,20 +204,25 @@ $essentialFields = [
                 throw new Error('Server returned non-JSON response (HTTP ' + response.status + '). ' + snippet);
             }
 
-            const replyText = payload && payload.server_replied ? ' | server_reply=YES' : ' | server_reply=NO';
+            const mt5Json = payload && payload.mt5_response ? JSON.stringify(payload.mt5_response, null, 2) : null;
+            const mt5Raw = payload && payload.mt5_raw_response_text ? String(payload.mt5_raw_response_text) : null;
+            const exactServerReply = mt5Json || mt5Raw;
 
-            const mt5ResponseText = payload && payload.mt5_response ? (' | mt5_response=' + JSON.stringify(payload.mt5_response)) : '';
+            if (exactServerReply) {
+                setStatus(exactServerReply, (!response.ok || !payload.ok) ? 'error' : 'success');
+                return;
+            }
 
             if (!response.ok || !payload.ok) {
                 const retcodeText = payload && payload.retcode ? (' | retcode=' + payload.retcode) : '';
                 const detailText = payload && payload.details ? (' | ' + (typeof payload.details === 'string' ? payload.details : JSON.stringify(payload.details))) : '';
-                setStatus('Apply failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + replyText + detailText + mt5ResponseText, 'error');
+                setStatus('Apply failed: ' + (payload.error || ('HTTP ' + response.status)) + retcodeText + detailText, 'error');
                 return;
             }
 
             const ticketText = payload.ticket ? (', ticket=' + payload.ticket) : '';
             const retcodeText = payload.retcode ? (', retcode=' + payload.retcode) : '';
-            setStatus('MT5 request processed. tx_id=' + payload.tx_id + ', status=' + payload.status + ticketText + retcodeText + replyText + mt5ResponseText, 'success');
+            setStatus('MT5 request processed. tx_id=' + payload.tx_id + ', status=' + payload.status + ticketText + retcodeText, 'success');
         } catch (error) {
             setStatus(error.message || 'Unknown request error.', 'error');
         } finally {
