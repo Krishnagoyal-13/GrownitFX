@@ -55,7 +55,12 @@ try {
     ]);
 
     $comment = mb_substr('DEP:' . $txId, 0, 32);
-    $mt5Result = mt5_trade_balance((int)$login, 4, number_format(abs($amount), 2, '.', ''), $comment);
+    $mt5Result = mt5_trade_balance(
+        (int)$login,
+        MT5_DEAL_BALANCE,
+        number_format(abs($amount), 2, '.', ''),
+        $comment
+    );
 
     $newStatus = $mt5Result['ok'] ? 'applied' : 'failed';
     $update = $pdo->prepare('UPDATE payment_transactions SET status = :status, mt5_ticket = :ticket, retcode = :retcode, details_json = :details WHERE tx_id = :tx_id');

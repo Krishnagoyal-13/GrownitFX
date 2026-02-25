@@ -55,7 +55,7 @@ try {
     ]);
 
     $comment = mb_substr('WDR:' . $txId, 0, 32);
-    $mt5Result = mt5_trade_balance((int)$login, 4, number_format(-1 * abs($amount), 2, '.', ''), $comment, 1);
+    $mt5Result = mt5_trade_balance((int)$login, MT5_DEAL_CHARGE, number_format(-1 * abs($amount), 2, '.', ''), $comment, 1);
 
     $newStatus = $mt5Result['ok'] ? 'applied' : 'failed';
     $retcode = (string)($mt5Result['retcode'] ?? '');
