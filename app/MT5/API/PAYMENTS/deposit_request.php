@@ -68,14 +68,17 @@ try {
     ]);
 
     http_response_code($mt5Result['ok'] ? 200 : 500);
+    $retcode = (string)($mt5Result['retcode'] ?? '');
+    $error = $mt5Result['ok'] ? null : ('MT5 deposit apply failed. retcode=' . ($retcode !== '' ? $retcode : 'unknown'));
+
     echo json_encode([
         'ok' => (bool)$mt5Result['ok'],
         'tx_id' => $txId,
         'status' => $newStatus,
         'ticket' => $mt5Result['ticket'] ?? null,
-        'retcode' => $mt5Result['retcode'] ?? null,
+        'retcode' => $retcode !== '' ? $retcode : null,
         'details' => $mt5Result['raw'] ?? null,
-        'error' => $mt5Result['ok'] ? null : 'MT5 deposit apply failed',
+        'error' => $error,
     ]);
 } catch (Throwable $e) {
     http_response_code(500);
