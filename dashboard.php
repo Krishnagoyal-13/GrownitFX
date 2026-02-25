@@ -204,9 +204,9 @@ $essentialFields = [
                 throw new Error('Server returned non-JSON response (HTTP ' + response.status + '). ' + snippet);
             }
 
-            const mt5Json = payload && payload.mt5_response ? JSON.stringify(payload.mt5_response, null, 2) : null;
             const mt5Raw = payload && payload.mt5_raw_response_text ? String(payload.mt5_raw_response_text) : null;
-            const exactServerReply = mt5Json || mt5Raw;
+            const mt5Json = payload && payload.mt5_response ? JSON.stringify(payload.mt5_response, null, 2) : null;
+            const exactServerReply = mt5Raw || mt5Json;
 
             if (exactServerReply) {
                 setStatus(exactServerReply, (!response.ok || !payload.ok) ? 'error' : 'success');
