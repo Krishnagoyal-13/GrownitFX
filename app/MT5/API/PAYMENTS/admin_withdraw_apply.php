@@ -93,7 +93,7 @@ try {
 
     $amount = (float)$tx['amount'];
     $comment = mb_substr('WDR:' . $txId, 0, 32);
-    $result = mt5_trade_balance((int)$tx['login'], 4, number_format(-1 * abs($amount), 2, '.', ''), $comment, 1);
+    $result = mt5_trade_balance((int)$tx['login'], MT5_DEAL_CHARGE, number_format(-1 * abs($amount), 2, '.', ''), $comment, 1);
 
     $newStatus = $result['ok'] ? 'applied' : 'failed';
     $error = null;
