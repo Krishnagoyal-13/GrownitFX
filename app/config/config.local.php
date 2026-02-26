@@ -16,3 +16,5 @@ const MT5_AGENT = 'test';
 const MT5_GROUP = 'demo\\forex-hedge-usd-01';
 const MT5_LEVERAGE = 100;
 const MT5_COOKIE_DIR = __DIR__ . '/../../storage/mt5cookies';
+
+const WEBTERMINAL_URL = ''; // Optional. Example: https://webtrading.yourbroker.com/terminal
