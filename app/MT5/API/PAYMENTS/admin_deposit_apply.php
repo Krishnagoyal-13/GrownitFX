@@ -92,7 +92,7 @@ try {
     }
 
     $comment = mb_substr('DEP:' . $txId, 0, 32);
-    $result = mt5_trade_balance((int)$tx['login'], 2, number_format((float)$tx['amount'], 2, '.', ''), $comment);
+    $result = mt5_trade_balance((int)$tx['login'], MT5_DEAL_BALANCE, number_format((float)$tx['amount'], 2, '.', ''), $comment);
 
     $newStatus = $result['ok'] ? 'applied' : 'failed';
     $update = $pdo->prepare('UPDATE payment_transactions SET status = :status, mt5_ticket = :ticket, retcode = :retcode, details_json = :details WHERE tx_id = :tx_id');
