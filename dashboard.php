@@ -85,6 +85,7 @@ $essentialFields = [
         .action-links { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
         .btn-manage { display: inline-block; background: #2563eb; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
         .btn-password { display: inline-block; background: #16a34a; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
+        .btn-webterminal { display: inline-block; background: #7c3aed; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
     </style>
 </head>
 <body class="dashboard-page">
@@ -125,6 +126,7 @@ $essentialFields = [
             <div class="action-links">
                 <a href="managebalance.php" class="btn-manage">Open Manage Money</a>
                 <a href="change_password.php" class="btn-password">Change Password</a>
+                <a href="webterminal.php" class="btn-webterminal">Open WebTerminal</a>
             </div>
         </section>
     </div>
