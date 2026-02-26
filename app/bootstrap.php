@@ -12,3 +12,4 @@ require_once __DIR__ . '/MT5/API/AUTH/Authentication.php';
 require_once __DIR__ . '/MT5/API/USER/Add.php';
 require_once __DIR__ . '/MT5/API/USER/CheckPassword.php';
 require_once __DIR__ . '/MT5/API/USER/GET/Get.php';
+require_once __DIR__ . '/MT5/API/USER/CHANGE_PASSWORD/ChangePassword.php';

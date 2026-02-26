@@ -119,65 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/icomoon.css">
     <link rel="stylesheet" href="css/custom.css">
-    <style>
-        body.auth-page {
-            min-height: 100vh;
-            background: linear-gradient(rgba(18, 18, 18, 0.72), rgba(18, 18, 18, 0.72)), url('images/bg.jpg') center/cover no-repeat;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .auth-card {
-            width: 100%;
-            max-width: 520px;
-            background: #fff;
-            border-radius: 12px;
-            padding: 28px;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
-        }
-        .auth-card h1 { margin-top: 0; }
-        .form-control { width: 100%; margin-top: 8px; margin-bottom: 14px; }
-        .alert-error, .alert-success {
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 14px;
-            word-break: break-word;
-        }
-        .alert-error { background: #fce8e8; color: #a94442; }
-        .alert-success { background: #e6f7ec; color: #2f6b43; }
-        .helper-link { margin-top: 12px; text-align: center; }
-        .password-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.65);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            padding: 16px;
-        }
-        .password-modal__card {
-            width: 100%;
-            max-width: 520px;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 20px 50px rgba(0,0,0,.35);
-            padding: 24px;
-        }
-        .cred-box {
-            background: #f8f9ff;
-            border: 1px solid #dde3f2;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-            font-family: monospace;
-            font-size: 15px;
-            word-break: break-all;
-        }
-        .modal-actions { display: flex; gap: 10px; margin-top: 14px; }
-    </style>
+    <link rel="stylesheet" href="css/portal-ui.css">
 </head>
 <body class="auth-page">
 <div class="auth-card">

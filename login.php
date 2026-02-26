@@ -58,36 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/icomoon.css">
     <link rel="stylesheet" href="css/custom.css">
-    <style>
-        body.auth-page {
-            min-height: 100vh;
-            background: linear-gradient(rgba(20, 20, 20, 0.72), rgba(20, 20, 20, 0.72)), url('images/hero_bg.jpg') center/cover no-repeat;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .auth-card {
-            width: 100%;
-            max-width: 460px;
-            background: #fff;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
-        }
-        .auth-card h1 { margin-top: 0; }
-        .form-control { width: 100%; margin-top: 8px; margin-bottom: 16px; }
-        .helper-link { margin-top: 14px; text-align: center; }
-        .alert-error {
-            background: #fce8e8;
-            color: #a94442;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 14px;
-            word-break: break-word;
-        }
-    </style>
+    <link rel="stylesheet" href="css/portal-ui.css">
 </head>
 <body class="auth-page">
 <div class="auth-card">
