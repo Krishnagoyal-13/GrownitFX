@@ -24,11 +24,11 @@ $comment = '';
 $checkMargin = true;
 
 $typeOptions = [
-    '2' => '2 — Balance operation',
-    '3' => '3 — Credit operation',
-    '4' => '4 — Additional add/withdraw',
-    '5' => '5 — Corrective operation',
-    '6' => '6 — Bonus operation',
+    (string) MT5_DEAL_BALANCE => '2 — a balance operation.',
+    (string) MT5_DEAL_CREDIT => '3 — a credit operation.',
+    (string) MT5_DEAL_CHARGE => '4 — additional adding/withdrawing.',
+    (string) MT5_DEAL_CORRECTIVE => '5 — corrective operations.',
+    (string) MT5_DEAL_BONUS => '6 — adding bonuses.',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

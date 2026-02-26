@@ -6,7 +6,10 @@ require_once __DIR__ . '/../../AUTH/ensure_manager.php';
 require_once __DIR__ . '/../../../../config/mt5.php';
 
 const MT5_DEAL_BALANCE = 2;
+const MT5_DEAL_CREDIT = 3;
 const MT5_DEAL_CHARGE = 4;
+const MT5_DEAL_CORRECTIVE = 5;
+const MT5_DEAL_BONUS = 6;
 
 /**
  * @return array{body:string|false,http_code:int,curl_error:string,request_url:string,method:string}
