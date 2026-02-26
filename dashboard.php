@@ -46,20 +46,7 @@ try {
     $errors[] = 'Dashboard data fetch failed: ' . $throwable->getMessage();
 }
 
-$essentialFields = [
-    'Login',
-    'Name',
-    'Email',
-    'Country',
-    'Group',
-    'Leverage',
-    'Balance',
-    'Credit',
-    'Registration',
-    'LastAccess',
-    'LastPassChange',
-    'LastIP',
-];
+$balanceText = isset($userData['Balance']) ? number_format((float) $userData['Balance'], 2) : '0.00';
 ?>
 <!doctype html>
 <html lang="en">
@@ -72,48 +59,108 @@ $essentialFields = [
     <link rel="stylesheet" href="css/custom.css">
     <link rel="stylesheet" href="css/portal-ui.css">
 </head>
-<body class="dashboard-page">
-<header class="topbar">
-    <strong><i class="icon-speedometer"></i> GrownitFX Dashboard</strong>
-    <a href="logout.php" class="btn btn-primary btn-sm">Logout</a>
+<body class="dashboard-page premium-dashboard">
+<header class="topbar topbar-sticky">
+    <div class="brand-wrap">
+        <img src="images/grownit-logo-w.png" alt="GrownitFX" class="brand-logo">
+        <div>
+            <div class="brand-name">GrownitFX</div>
+            <small class="brand-sub">Client Dashboard</small>
+        </div>
+    </div>
+
+    <div class="header-cta-group">
+        <a href="managebalance.php" class="btn-manage">Open Manage Money</a>
+        <a href="change_password.php" class="btn-password">Change Password</a>
+        <a href="webterminal.php" class="btn-webterminal">Open WebTerminal</a>
+    </div>
 </header>
 
-<div class="dashboard-wrap">
-    <div class="panel">
-        <h1>Welcome<?php if (isset($_SESSION['user_email'])): ?>, <?= htmlspecialchars((string) $_SESSION['user_email'], ENT_QUOTES, 'UTF-8') ?><?php else: ?>, Trader<?php endif; ?>!</h1>
-        <p class="meta">Live data fetched from MT5 <code>/api/user/get</code> for login ID <strong><?= htmlspecialchars($loginId, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
+<main class="dashboard-wrap premium-wrap">
+    <?php foreach ($errors as $error): ?>
+        <div class="alert-error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php endforeach; ?>
 
-        <?php foreach ($errors as $error): ?>
-            <div class="alert-error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
-        <?php endforeach; ?>
+    <?php if ($moneyStatus === 'applied'): ?>
+        <div class="alert-success">Money operation applied successfully. Live balance has been refreshed from MT5.</div>
+    <?php endif; ?>
 
-        <?php if ($moneyStatus === 'applied'): ?>
-            <div class="alert-success">Money operation applied successfully. Live balance above is refreshed from MT5.</div>
-        <?php endif; ?>
-
-        <?php if ($userData !== []): ?>
-            <div class="kv-grid">
-                <?php foreach ($essentialFields as $field): ?>
-                    <?php if (array_key_exists($field, $userData)): ?>
-                        <div class="kv-item">
-                            <strong><?= htmlspecialchars($field, ENT_QUOTES, 'UTF-8') ?></strong>
-                            <span><?= htmlspecialchars((string) $userData[$field], ENT_QUOTES, 'UTF-8') ?></span>
-                        </div>
-                    <?php endif; ?>
-                <?php endforeach; ?>
+    <section class="verify-banner card-hover">
+        <div class="verify-left">
+            <img src="images/kyc.jpg" alt="Verify identity" class="verify-illustration">
+            <div>
+                <h2>Verify Your Identity</h2>
+                <p>Boost your limits and secure your profile by completing quick KYC verification.</p>
             </div>
-        <?php endif; ?>
+        </div>
+        <button class="btn-verify" type="button">Verify Now</button>
+    </section>
 
-        <section class="manage-money">
-            <h2>Account Actions</h2>
-            <p class="meta">Use dedicated pages for money operations and password updates with detailed debug output if anything fails.</p>
-            <div class="action-links">
-                <a href="managebalance.php" class="btn-manage">Open Manage Money</a>
-                <a href="change_password.php" class="btn-password">Change Password</a>
-                <a href="webterminal.php" class="btn-webterminal">Open WebTerminal</a>
+    <section class="dashboard-grid">
+        <article class="card asset-card card-hover">
+            <h3>Total assets estimate</h3>
+            <div class="asset-value-row">
+                <div class="asset-value"><?= htmlspecialchars($balanceText, ENT_QUOTES, 'UTF-8') ?></div>
+                <select class="currency-select" aria-label="Currency selector">
+                    <option>USD</option>
+                    <option>EUR</option>
+                    <option>AED</option>
+                </select>
             </div>
-        </section>
-    </div>
-</div>
+            <div class="pill-actions">
+                <a href="managebalance.php" class="pill active">Deposit</a>
+                <a href="managebalance.php" class="pill">Withdrawal</a>
+                <a href="managebalance.php" class="pill">Transfer</a>
+                <a href="managebalance.php" class="pill">History</a>
+            </div>
+        </article>
+
+        <article class="card trading-card card-hover">
+            <h3>Trading Account</h3>
+            <div class="account-alert">
+                <img src="images/signup.png" alt="Account ready" class="account-alert-icon">
+                <div>
+                    <strong>MT5 account created and active</strong>
+                    <p>Login #<?= htmlspecialchars($loginId, ENT_QUOTES, 'UTF-8') ?> is ready. Complete setup and start trading global markets.</p>
+                </div>
+                <a href="webterminal.php" class="arrow-cta">→</a>
+            </div>
+            <a href="logout.php" class="tiny-link">Sign out</a>
+        </article>
+    </section>
+
+    <section class="card markets-card card-hover">
+        <h3>Markets</h3>
+        <div class="market-tabs">
+            <button class="tab active" type="button">Forex</button>
+            <button class="tab" type="button">Crypto</button>
+            <button class="tab" type="button">Shares</button>
+            <button class="tab" type="button">Indices</button>
+            <button class="tab" type="button">Metals</button>
+            <button class="tab" type="button">Energy</button>
+            <button class="tab" type="button">ETFs</button>
+        </div>
+
+        <div class="table-wrap">
+            <table class="market-table">
+                <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Bid</th>
+                    <th>Change</th>
+                    <th>Markets</th>
+                    <th>Percentage</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr><td>EURUSD</td><td>1.08425</td><td class="up">+0.0012</td><td>Forex</td><td class="up">+0.11%</td></tr>
+                <tr><td>BTCUSD</td><td>64,215.20</td><td class="down">-420.35</td><td>Crypto</td><td class="down">-0.65%</td></tr>
+                <tr><td>XAUUSD</td><td>2,025.10</td><td class="up">+4.20</td><td>Metals</td><td class="up">+0.21%</td></tr>
+                <tr><td>US500</td><td>5,041.80</td><td class="up">+18.60</td><td>Indices</td><td class="up">+0.37%</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
 </body>
 </html>
