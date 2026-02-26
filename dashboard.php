@@ -82,7 +82,9 @@ $essentialFields = [
         .kv-item { border: 1px solid #edf0f4; border-radius: 10px; padding: 10px 12px; background: #fbfcfe; }
         .kv-item strong { display: block; font-size: 12px; color: #667085; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
         .manage-money { margin-top: 22px; padding-top: 20px; border-top: 1px solid #edf0f4; }
-        .btn-manage { display: inline-block; margin-top: 8px; background: #2563eb; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
+        .action-links { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+        .btn-manage { display: inline-block; background: #2563eb; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
+        .btn-password { display: inline-block; background: #16a34a; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
     </style>
 </head>
 <body class="dashboard-page">
@@ -118,9 +120,12 @@ $essentialFields = [
         <?php endif; ?>
 
         <section class="manage-money">
-            <h2>Manage Money</h2>
-            <p class="meta">Open a dedicated page to apply add/withdraw operations with type, amount, comment, and full debug output if anything fails.</p>
-            <a href="managebalance.php" class="btn-manage">Open Manage Money</a>
+            <h2>Account Actions</h2>
+            <p class="meta">Use dedicated pages for money operations and password updates with detailed debug output if anything fails.</p>
+            <div class="action-links">
+                <a href="managebalance.php" class="btn-manage">Open Manage Money</a>
+                <a href="change_password.php" class="btn-password">Change Password</a>
+            </div>
         </section>
     </div>
 </div>
