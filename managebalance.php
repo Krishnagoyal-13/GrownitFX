@@ -32,6 +32,15 @@ $typeOptions = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $debug = [
+        'session' => [
+            'session_id' => session_id(),
+            'has_user_login_id' => isset($_SESSION['user_login_id']),
+            'user_login_id' => $_SESSION['user_login_id'] ?? null,
+            'user_email' => $_SESSION['user_email'] ?? null,
+        ],
+    ];
+
     $action = (string) ($_POST['action'] ?? 'add');
     $type = (string) ($_POST['type'] ?? (string) MT5_DEAL_BALANCE);
     $amountInput = trim((string) ($_POST['amount'] ?? ''));
@@ -74,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $marginFlag
             );
 
-            $debug = [
+            $debug = array_merge($debug, [
                 'ok' => (bool) ($result['ok'] ?? false),
                 'retcode' => $result['retcode'] ?? null,
                 'http_code' => $result['http_code'] ?? null,
@@ -83,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'details' => $result['details'] ?? null,
                 'raw_response_text' => $result['raw_response_text'] ?? null,
                 'raw' => $result['raw'] ?? null,
-            ];
+            ]);
 
             if ((bool) ($result['ok'] ?? false) === true) {
                 header('Location: dashboard.php?money=applied');
@@ -93,9 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'MT5 apply failed.';
         } catch (Throwable $throwable) {
             $errors[] = 'Server exception during manage money apply.';
-            $debug = [
+            $debug = array_merge($debug, [
                 'exception' => $throwable->getMessage(),
-            ];
+            ]);
         }
     }
 }
