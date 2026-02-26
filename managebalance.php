@@ -116,25 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Manage Money | GrownitFX</title>
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        body { margin: 0; font-family: "Open Sans", Arial, sans-serif; background: #f4f7fb; color: #1d2939; }
-        .topbar { background: #233142; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .wrap { max-width: 980px; margin: 26px auto; padding: 0 16px; }
-        .card { background: #fff; border-radius: 16px; box-shadow: 0 12px 30px rgba(15,23,42,.08); padding: 24px; }
-        .meta { color: #5f6670; font-size: 14px; margin-top: 8px; }
-        .grid { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 12px; }
-        label { font-weight: 600; display:block; margin-bottom:6px; }
-        input, select, textarea { width: 100%; border:1px solid #cfd9e5; border-radius:8px; padding:10px; font-size:14px; }
-        textarea { min-height: 96px; resize: vertical; }
-        .check { display:flex; align-items:center; gap:8px; margin-top: 6px; }
-        .check input { width:auto; }
-        .actions { margin-top: 16px; display:flex; gap:10px; align-items:center; }
-        .btn { border:none; border-radius:8px; padding:10px 14px; cursor:pointer; font-weight:600; }
-        .btn-primary { background:#2563eb; color:#fff; }
-        .btn-light { background:#e2e8f0; color:#1f2937; text-decoration:none; display:inline-block; }
-        .alert-error { margin-top:12px; background:#fff1f2; border:1px solid #fecdd3; color:#9f1239; border-radius:10px; padding:10px 12px; }
-        .debug { margin-top:12px; background:#0f172a; color:#e2e8f0; border-radius:10px; padding:12px; white-space:pre-wrap; word-break:break-word; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
-    </style>
+    <link rel="stylesheet" href="css/portal-ui.css">
 </head>
 <body>
 <header class="topbar">

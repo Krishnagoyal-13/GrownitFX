@@ -70,23 +70,7 @@ $essentialFields = [
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/icomoon.css">
     <link rel="stylesheet" href="css/custom.css">
-    <style>
-        body.dashboard-page { min-height: 100vh; margin: 0; background: #f4f7fb; font-family: "Open Sans", Arial, sans-serif; color: #1d2939; }
-        .topbar { background: #233142; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .dashboard-wrap { max-width: 1080px; margin: 28px auto; padding: 0 16px; }
-        .panel { background: #fff; border-radius: 16px; box-shadow: 0 12px 30px rgba(15, 23, 42, .08); padding: 28px; }
-        .meta { color: #5f6670; margin-top: 12px; }
-        .alert-error { background: #fce8e8; color: #a94442; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 14px; word-break: break-word; }
-        .alert-success { background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 14px; word-break: break-word; }
-        .kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 18px; }
-        .kv-item { border: 1px solid #edf0f4; border-radius: 10px; padding: 10px 12px; background: #fbfcfe; }
-        .kv-item strong { display: block; font-size: 12px; color: #667085; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
-        .manage-money { margin-top: 22px; padding-top: 20px; border-top: 1px solid #edf0f4; }
-        .action-links { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
-        .btn-manage { display: inline-block; background: #2563eb; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
-        .btn-password { display: inline-block; background: #16a34a; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
-        .btn-webterminal { display: inline-block; background: #7c3aed; color: #fff; border-radius: 10px; padding: 10px 16px; text-decoration: none; font-weight: 600; }
-    </style>
+    <link rel="stylesheet" href="css/portal-ui.css">
 </head>
 <body class="dashboard-page">
 <header class="topbar">

@@ -32,16 +32,7 @@ $iframeSrc = $webterminalBase . (str_contains($webterminalBase, '?') ? '&' : '?'
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>WebTerminal | GrownitFX</title>
-    <style>
-        body { margin: 0; font-family: "Open Sans", Arial, sans-serif; background: #f4f7fb; color: #1d2939; }
-        .topbar { background: #233142; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .wrap { max-width: 1280px; margin: 20px auto; padding: 0 16px; }
-        .card { background: #fff; border-radius: 16px; box-shadow: 0 12px 30px rgba(15, 23, 42, .08); padding: 16px; }
-        .meta { color: #5f6670; margin: 8px 0 12px; font-size: 14px; }
-        .iframe-wrap { border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; background: #fff; }
-        iframe { width: 100%; height: 900px; border: 0; }
-        .btn-back { background: #e2e8f0; color: #1f2937; border-radius: 8px; padding: 8px 12px; text-decoration: none; font-weight: 600; }
-    </style>
+    <link rel="stylesheet" href="css/portal-ui.css">
 </head>
 <body>
 <header class="topbar">
